@@ -1,0 +1,39 @@
+services:
+  db:
+    container_name: pos-db
+    image: postgres:16
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - pos_postgres_data:/var/lib/postgresql/data
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  pgadmin:
+    container_name: pos-pgadmin
+    image: dpage/pgadmin4
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT}:80"
+    depends_on:
+      - db
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+volumes:
+  pos_postgres_data:
+
+networks:
+  pos-network:
