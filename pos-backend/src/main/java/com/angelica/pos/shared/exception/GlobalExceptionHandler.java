@@ -2,7 +2,10 @@ package com.angelica.pos.shared.exception;
 
 import com.angelica.pos.catalog.category.exception.CategoryAlreadyExistsException;
 import com.angelica.pos.catalog.category.exception.CategoryNotFoundException;
+import com.angelica.pos.catalog.product.exception.ProductAlreadyExistsException;
+import com.angelica.pos.catalog.product.exception.ProductNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +36,22 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
     }
 
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleProductNotFound(
+            ProductNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(ProductAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleProductAlreadyExists(
+            ProductAlreadyExistsException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception,
@@ -48,6 +67,34 @@ public class GlobalExceptionHandler {
                 request,
                 validationErrors
         );
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(
+            ConstraintViolationException exception,
+            HttpServletRequest request
+    ) {
+        Map<String, String> validationErrors = new LinkedHashMap<>();
+        exception.getConstraintViolations()
+                .forEach(violation -> validationErrors.put(
+                        violation.getPropertyPath().toString(),
+                        violation.getMessage()
+                ));
+
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "La solicitud contiene parametros invalidos",
+                request,
+                validationErrors
+        );
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
