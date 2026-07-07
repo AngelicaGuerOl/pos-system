@@ -4,11 +4,14 @@ import com.angelica.pos.catalog.category.exception.CategoryAlreadyExistsExceptio
 import com.angelica.pos.catalog.category.exception.CategoryNotFoundException;
 import com.angelica.pos.catalog.product.exception.ProductAlreadyExistsException;
 import com.angelica.pos.catalog.product.exception.ProductNotFoundException;
+import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
+import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -47,6 +50,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProductAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleProductAlreadyExists(
             ProductAlreadyExistsException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(CustomerNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCustomerNotFound(
+            CustomerNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(CustomerAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleCustomerAlreadyExists(
+            CustomerAlreadyExistsException exception,
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
@@ -95,6 +114,19 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "El cuerpo de la solicitud no es valido o contiene valores no permitidos",
+                request,
+                null
+        );
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

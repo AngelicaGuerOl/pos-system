@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -35,6 +36,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse create(ProductRequest request) {
         Category category = findActiveCategoryById(request.getCategoryId());
         String normalizedBarcode = normalizeBarcode(request.getBarcode());
+        validateSalePrice(request.getSalePrice(), request.getCostPrice());
 
         if (productRepository.existsByBarcodeIgnoreCase(normalizedBarcode)) {
             throw new ProductAlreadyExistsException(normalizedBarcode);
@@ -103,6 +105,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = findActiveProductById(id);
         Category category = findActiveCategoryById(request.getCategoryId());
         String normalizedBarcode = normalizeBarcode(request.getBarcode());
+        validateSalePrice(request.getSalePrice(), request.getCostPrice());
 
         if (productRepository.existsByBarcodeIgnoreCaseAndIdNot(normalizedBarcode, id)) {
             throw new ProductAlreadyExistsException(normalizedBarcode);
@@ -137,6 +140,12 @@ public class ProductServiceImpl implements ProductService {
     private void validatePageSize(Pageable pageable) {
         if (pageable.getPageSize() > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("El tamano de pagina no debe superar " + MAX_PAGE_SIZE + " registros");
+        }
+    }
+
+    private void validateSalePrice(BigDecimal salePrice, BigDecimal costPrice) {
+        if (salePrice != null && costPrice != null && salePrice.compareTo(costPrice) < 0) {
+            throw new IllegalArgumentException("El precio de venta no debe ser menor que el precio de costo");
         }
     }
 

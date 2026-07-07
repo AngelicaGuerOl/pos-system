@@ -1,9 +1,9 @@
-package com.angelica.pos.catalog.product.controller;
+package com.angelica.pos.customer.controller;
 
-import com.angelica.pos.catalog.product.dto.ProductRequest;
-import com.angelica.pos.catalog.product.dto.ProductResponse;
-import com.angelica.pos.catalog.product.dto.ProductUpdateRequest;
-import com.angelica.pos.catalog.product.service.ProductService;
+import com.angelica.pos.customer.dto.CustomerRequest;
+import com.angelica.pos.customer.dto.CustomerResponse;
+import com.angelica.pos.customer.dto.CustomerUpdateRequest;
+import com.angelica.pos.customer.service.CustomerService;
 import com.angelica.pos.shared.response.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -28,16 +28,16 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/customers")
 @RequiredArgsConstructor
 @Validated
-public class ProductController {
+public class CustomerController {
 
-    private final ProductService productService;
+    private final CustomerService customerService;
 
     @PostMapping
-    public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductRequest request) {
-        ProductResponse response = productService.create(request);
+    public ResponseEntity<CustomerResponse> create(@Valid @RequestBody CustomerRequest request) {
+        CustomerResponse response = customerService.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(response.getId())
@@ -47,54 +47,41 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<PageResponse<ProductResponse>> findAll(
+    public ResponseEntity<PageResponse<CustomerResponse>> findAll(
             @RequestParam(required = false)
             @Size(max = 100, message = "Search must have at most 100 characters")
             String search,
-            @RequestParam(required = false)
-            @Positive(message = "Category id must be positive")
-            Long categoryId,
-            @RequestParam(required = false) Boolean lowStock,
-            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
+            @PageableDefault(size = 10, sort = "firstName", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return ResponseEntity.ok(productService.findAllActive(search, categoryId, lowStock, pageable));
+        return ResponseEntity.ok(customerService.findAllActive(search, pageable));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductResponse> findById(
+    public ResponseEntity<CustomerResponse> findById(
             @PathVariable
-            @Positive(message = "Product id must be positive")
+            @Positive(message = "Customer id must be positive")
             Long id
     ) {
-        return ResponseEntity.ok(productService.findById(id));
-    }
-
-    @GetMapping("/barcode/{barcode}")
-    public ResponseEntity<ProductResponse> findByBarcode(
-            @PathVariable
-            @Size(max = 50, message = "Barcode must have at most 50 characters")
-            String barcode
-    ) {
-        return ResponseEntity.ok(productService.findByBarcode(barcode));
+        return ResponseEntity.ok(customerService.findById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductResponse> update(
+    public ResponseEntity<CustomerResponse> update(
             @PathVariable
-            @Positive(message = "Product id must be positive")
+            @Positive(message = "Customer id must be positive")
             Long id,
-            @Valid @RequestBody ProductUpdateRequest request
+            @Valid @RequestBody CustomerUpdateRequest request
     ) {
-        return ResponseEntity.ok(productService.update(id, request));
+        return ResponseEntity.ok(customerService.update(id, request));
     }
 
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<Void> deactivate(
             @PathVariable
-            @Positive(message = "Product id must be positive")
+            @Positive(message = "Customer id must be positive")
             Long id
     ) {
-        productService.deactivate(id);
+        customerService.deactivate(id);
         return ResponseEntity.noContent().build();
     }
 }
