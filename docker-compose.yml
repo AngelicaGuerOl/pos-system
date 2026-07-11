@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USER:?DB_USER is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "${DB_PORT:?DB_PORT is required}:5432"
+    volumes:
+      - pos_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./pos-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:?SPRING_PROFILES_ACTIVE is required}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:?DB_NAME is required}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:?DB_USER is required}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:?JWT_EXPIRATION_MINUTES is required}
+      BOOTSTRAP_ADMIN_ENABLED: ${BOOTSTRAP_ADMIN_ENABLED:?BOOTSTRAP_ADMIN_ENABLED is required}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:?BOOTSTRAP_ADMIN_USERNAME is required}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?BOOTSTRAP_ADMIN_PASSWORD is required}
+    ports:
+      - "${BACKEND_PORT:?BACKEND_PORT is required}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./pos-frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:?VITE_API_URL is required}
+    ports:
+      - "${FRONTEND_PORT:?FRONTEND_PORT is required}:5173"
+    depends_on:
+      - backend
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:?PGADMIN_EMAIL is required}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD is required}
+    ports:
+      - "${PGADMIN_PORT:?PGADMIN_PORT is required}:80"
+    depends_on:
+      - db
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+volumes:
+  pos_postgres_data:
+
+networks:
+  pos-network:
