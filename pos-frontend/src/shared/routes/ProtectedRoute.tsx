@@ -1,0 +1,20 @@
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useAuth } from '../../features/auth'
+import { ROUTE_PATHS } from './routePaths'
+import { LoadingScreen } from '../ui/components/LoadingScreen'
+
+export const ProtectedRoute = () => {
+  const location = useLocation()
+  const { isAuthenticated, loading } = useAuth()
+
+  if (loading) {
+    return <LoadingScreen />
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate replace state={{ from: location }} to={ROUTE_PATHS.login} />
+  }
+
+  return <Outlet />
+}
+

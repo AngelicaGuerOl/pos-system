@@ -1,5 +1,11 @@
 # React + TypeScript + Vite
 
+## Documentacion del login POS
+
+La documentacion completa del modulo de login JWT esta en:
+
+[README_AUTH_LOGIN.md](./README_AUTH_LOGIN.md)
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:
