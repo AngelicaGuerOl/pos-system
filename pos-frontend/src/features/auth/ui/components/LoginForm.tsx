@@ -12,9 +12,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { useState } from 'react'
 import { useLogin } from '../hooks/useLogin'
+import { PasswordVisibilityAdornment } from './PasswordVisibilityAdornment'
 
 export const LoginForm = () => {
+  const [showPassword, setShowPassword] = useState(false)
   const { form, onSubmit, loading, errorMessage } = useLogin()
   const {
     formState: { errors },
@@ -99,9 +102,16 @@ export const LoginForm = () => {
                       <LockRoundedIcon color="action" fontSize="small" />
                     </InputAdornment>
                   ),
+                  endAdornment: (
+                    <PasswordVisibilityAdornment
+                      disabled={loading}
+                      onToggle={() => setShowPassword((current) => !current)}
+                      visible={showPassword}
+                    />
+                  ),
                 },
               }}
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               {...register('password')}
             />
 

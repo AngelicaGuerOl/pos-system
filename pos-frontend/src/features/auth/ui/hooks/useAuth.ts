@@ -11,13 +11,14 @@ import {
 import { normalizeApiError } from '../../../../shared/api/apiError'
 import { tokenStorage } from '../../../../shared/lib/storage/tokenStorage'
 import { authDependencies } from '../../dependencies'
-import type { User } from '../../domain/entities/User'
+import type { ChangePasswordData, User } from '../../domain/entities/User'
 
 type AuthContextValue = {
   user: User | null
   isAuthenticated: boolean
   loading: boolean
   login: (username: string, password: string) => Promise<User>
+  changePassword: (data: ChangePasswordData) => Promise<User>
   logout: () => Promise<void>
   refreshCurrentUser: () => Promise<User | null>
 }
@@ -61,6 +62,12 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     return authenticatedUser
   }, [])
 
+  const changePassword = useCallback(async (data: ChangePasswordData) => {
+    const updatedUser = await authDependencies.changePasswordUseCase.execute(data)
+    setUser(updatedUser)
+    return updatedUser
+  }, [])
+
   const logout = useCallback(async () => {
     await authDependencies.logoutUseCase.execute()
     setUser(null)
@@ -72,10 +79,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
       isAuthenticated: Boolean(user) || Boolean(tokenStorage.getToken()),
       loading,
       login,
+      changePassword,
       logout,
       refreshCurrentUser,
     }),
-    [loading, login, logout, refreshCurrentUser, user],
+    [changePassword, loading, login, logout, refreshCurrentUser, user],
   )
 
   return createElement(AuthContext.Provider, { value }, children)
@@ -90,4 +98,3 @@ export const useAuth = (): AuthContextValue => {
 
   return context
 }
-

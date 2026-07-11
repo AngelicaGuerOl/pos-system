@@ -27,15 +27,29 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             JOIN p.category c
             WHERE p.active = true
               AND (
-                    :search IS NULL
-                    OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(p.barcode) LIKE LOWER(CONCAT('%', :search, '%'))
-              )
+                  )
+              AND (:categoryId IS NULL OR c.id = :categoryId)
+              AND (:lowStock IS NULL OR :lowStock = false OR p.currentStock <= p.minimumStock)
+            """)
+    Page<Product> findAllActiveWithSearchAndFilters(
+            @Param("search") String search,
+            @Param("categoryId") Long categoryId,
+            @Param("lowStock") Boolean lowStock,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "category")
+    @Query("""
+            SELECT p
+            FROM Product p
+            JOIN p.category c
+            WHERE p.active = true
               AND (:categoryId IS NULL OR c.id = :categoryId)
               AND (:lowStock IS NULL OR :lowStock = false OR p.currentStock <= p.minimumStock)
             """)
     Page<Product> findAllActiveWithFilters(
-            @Param("search") String search,
             @Param("categoryId") Long categoryId,
             @Param("lowStock") Boolean lowStock,
             Pageable pageable

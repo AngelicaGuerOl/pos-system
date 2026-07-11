@@ -62,12 +62,15 @@ public class ProductServiceImpl implements ProductService {
     ) {
         validatePageSize(pageable);
 
-        Page<Product> productsPage = productRepository.findAllActiveWithFilters(
-                normalizeSearch(search),
-                categoryId,
-                lowStock,
-                pageable
-        );
+        String normalizedSearch = normalizeSearch(search);
+        Page<Product> productsPage = normalizedSearch == null
+                ? productRepository.findAllActiveWithFilters(categoryId, lowStock, pageable)
+                : productRepository.findAllActiveWithSearchAndFilters(
+                        normalizedSearch,
+                        categoryId,
+                        lowStock,
+                        pageable
+                );
 
         List<ProductResponse> content = productMapper.toResponseList(productsPage.getContent());
 

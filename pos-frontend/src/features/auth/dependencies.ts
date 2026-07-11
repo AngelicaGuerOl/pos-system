@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient'
+import { ChangePasswordUseCase } from './application/useCases/ChangePasswordUseCase'
 import { GetCurrentUserUseCase } from './application/useCases/GetCurrentUserUseCase'
 import { LoginUseCase } from './application/useCases/LoginUseCase'
 import { LogoutUseCase } from './application/useCases/LogoutUseCase'
@@ -10,5 +11,5 @@ export const authDependencies = {
   loginUseCase: new LoginUseCase(authRepository),
   logoutUseCase: new LogoutUseCase(authRepository),
   getCurrentUserUseCase: new GetCurrentUserUseCase(authRepository),
+  changePasswordUseCase: new ChangePasswordUseCase(authRepository),
 } as const
-

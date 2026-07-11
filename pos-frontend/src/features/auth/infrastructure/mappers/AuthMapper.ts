@@ -4,6 +4,7 @@ type BackendUserResponse = {
   id: number
   username: string
   role: UserRole
+  mustChangePassword?: boolean
 }
 
 export type BackendCurrentUserResponse = BackendUserResponse & {
@@ -23,6 +24,7 @@ export const AuthMapper = {
       id: response.id,
       username: response.username,
       role: response.role,
+      mustChangePassword: Boolean(response.mustChangePassword),
     }
   },
 }

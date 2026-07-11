@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import { tokenStorage } from '../../../shared/lib/storage/tokenStorage'
-import type { User } from '../domain/entities/User'
+import type { ChangePasswordData, User } from '../domain/entities/User'
 import type { AuthRepository } from '../domain/repositories/AuthRepository'
 import {
   AuthMapper,
@@ -11,6 +11,11 @@ import {
 type LoginRequest = {
   username: string
   password: string
+}
+
+type ChangePasswordRequest = {
+  currentPassword: string
+  newPassword: string
 }
 
 export class AuthRepositoryImpl implements AuthRepository {
@@ -35,6 +40,18 @@ export class AuthRepositoryImpl implements AuthRepository {
     const { data } = await this.client.get<BackendCurrentUserResponse>('/auth/me')
 
     return AuthMapper.toUser(data)
+  }
+
+  async changePassword(data: ChangePasswordData): Promise<User> {
+    const response = await this.client.post<BackendCurrentUserResponse>(
+      '/auth/change-password',
+      {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      } satisfies ChangePasswordRequest,
+    )
+
+    return AuthMapper.toUser(response.data)
   }
 
   async logout(): Promise<void> {

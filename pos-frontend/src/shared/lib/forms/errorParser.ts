@@ -12,3 +12,9 @@ export const getFormErrorMessage = (error: NormalizedApiError | null): string | 
   return error.message
 }
 
+export const getValidationErrorMessage = (
+  error: NormalizedApiError | null,
+  field: string,
+): string | undefined => {
+  return error?.validationErrors?.[field]
+}

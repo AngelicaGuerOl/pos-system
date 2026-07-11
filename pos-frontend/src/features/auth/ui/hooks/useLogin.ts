@@ -28,8 +28,13 @@ export const useLogin = () => {
     setApiError(null)
 
     try {
-      await login(values.username, values.password)
-      navigate(ROUTE_PATHS.dashboard, { replace: true })
+      const authenticatedUser = await login(values.username, values.password)
+      navigate(
+        authenticatedUser.mustChangePassword
+          ? ROUTE_PATHS.changePassword
+          : ROUTE_PATHS.dashboard,
+        { replace: true },
+      )
     } catch (error) {
       setApiError(normalizeApiError(error))
     }
@@ -42,4 +47,3 @@ export const useLogin = () => {
     errorMessage: generalError,
   }
 }
-

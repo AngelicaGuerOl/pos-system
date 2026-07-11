@@ -1,11 +1,19 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
-import { LoginPage } from '../../features/auth'
+import { ChangePasswordPage, LoginPage } from '../../features/auth'
+import { CategoriesPage } from '../../features/catalog/categories'
+import { ProductsPage } from '../../features/catalog/products'
+import { DashboardPage } from '../../features/dashboard'
 import { ProtectedRoute } from '../../shared/routes/ProtectedRoute'
 import { PublicRoute } from '../../shared/routes/PublicRoute'
 import { ROUTE_PATHS } from '../../shared/routes/routePaths'
-import { DashboardPage } from '../../shared/ui/pages/DashboardPage'
+import { DashboardLayout } from '../../shared/ui/layout/DashboardLayout'
+import { PlaceholderPage } from '../../shared/ui/pages/PlaceholderPage'
 
 export const appRoutes: RouteObject[] = [
+  {
+    path: '/',
+    element: <Navigate replace to={ROUTE_PATHS.dashboard} />,
+  },
   {
     element: <PublicRoute />,
     children: [
@@ -19,8 +27,37 @@ export const appRoutes: RouteObject[] = [
     element: <ProtectedRoute />,
     children: [
       {
-        path: ROUTE_PATHS.dashboard,
-        element: <DashboardPage />,
+        element: <DashboardLayout />,
+        children: [
+          {
+            path: ROUTE_PATHS.changePassword,
+            element: <ChangePasswordPage />,
+          },
+          {
+            path: ROUTE_PATHS.dashboard,
+            element: <DashboardPage />,
+          },
+          {
+            path: ROUTE_PATHS.categories,
+            element: <CategoriesPage />,
+          },
+          {
+            path: ROUTE_PATHS.products,
+            element: <ProductsPage />,
+          },
+          {
+            path: ROUTE_PATHS.customers,
+            element: <PlaceholderPage title="Clientes" />,
+          },
+          {
+            path: ROUTE_PATHS.sales,
+            element: <PlaceholderPage title="Ventas" />,
+          },
+          {
+            path: ROUTE_PATHS.users,
+            element: <PlaceholderPage title="Usuarios" />,
+          },
+        ],
       },
     ],
   },

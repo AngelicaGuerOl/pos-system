@@ -5,7 +5,7 @@ import { LoadingScreen } from '../ui/components/LoadingScreen'
 
 export const ProtectedRoute = () => {
   const location = useLocation()
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
 
   if (loading) {
     return <LoadingScreen />
@@ -15,6 +15,20 @@ export const ProtectedRoute = () => {
     return <Navigate replace state={{ from: location }} to={ROUTE_PATHS.login} />
   }
 
+  if (
+    user?.mustChangePassword &&
+    location.pathname !== ROUTE_PATHS.changePassword
+  ) {
+    return <Navigate replace to={ROUTE_PATHS.changePassword} />
+  }
+
+  if (
+    user &&
+    !user.mustChangePassword &&
+    location.pathname === ROUTE_PATHS.changePassword
+  ) {
+    return <Navigate replace to={ROUTE_PATHS.dashboard} />
+  }
+
   return <Outlet />
 }
-
