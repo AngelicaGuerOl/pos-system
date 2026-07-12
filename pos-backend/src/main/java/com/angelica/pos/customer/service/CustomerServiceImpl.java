@@ -49,10 +49,10 @@ public class CustomerServiceImpl implements CustomerService {
     public PageResponse<CustomerResponse> findAllActive(String search, Pageable pageable) {
         validatePageSize(pageable);
 
-        Page<Customer> customersPage = customerRepository.findAllActiveWithFilters(
-                normalizeSearch(search),
-                pageable
-        );
+        String normalizedSearch = normalizeSearch(search);
+        Page<Customer> customersPage = normalizedSearch == null
+                ? customerRepository.findAllActive(pageable)
+                : customerRepository.findAllActiveWithSearch(normalizedSearch, pageable);
 
         List<CustomerResponse> content = customerMapper.toResponseList(customersPage.getContent());
 

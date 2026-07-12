@@ -15,10 +15,12 @@ import {
   Snackbar,
   Stack,
   TextField,
+  type AlertColor,
 } from '@mui/material'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useAuth } from '../../../../auth'
 import { useCategories } from '../../../categories/ui/hooks/useCategories'
+import { useFormHandler } from '../../../../../shared/lib/forms/useFormHandler'
 import { ConfirmDialog } from '../../../../../shared/ui/components/ConfirmDialog'
 import { DataGridShell } from '../../../../../shared/ui/components/DataGridShell'
 import { EmptyState } from '../../../../../shared/ui/components/EmptyState'
@@ -41,7 +43,7 @@ export const ProductsPage = () => {
   const canManage = user?.role === 'ADMIN'
   const [modal, setModal] = useState<ModalState>({ mode: 'create', open: false, product: null })
   const [productToDeactivate, setProductToDeactivate] = useState<Product | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ text: string; severity: AlertColor } | null>(null)
   const { categories } = useCategories()
   const { error, filters, loading, products, refetch, setFilters } = useProducts()
   const createProduct = useCreateProduct()
@@ -55,20 +57,21 @@ export const ProductsPage = () => {
 
   const mutationLoading = createProduct.loading || updateProduct.loading || deactivateProduct.loading
 
-  const handleSubmit = async (values: ProductMutation) => {
-    const result =
-      modal.mode === 'create'
-        ? await createProduct.createProduct(values)
-        : await updateProduct.updateProduct(modal.product.id, values)
+  const notify = useCallback((text: string, severity: 'success' | 'error') => {
+    setMessage({ severity, text })
+  }, [])
 
-    if (!result) {
-      return
-    }
-
-    setModal({ mode: 'create', open: false, product: null })
-    setMessage(modal.mode === 'create' ? 'Producto creado' : 'Producto actualizado')
-    await refetch()
-  }
+  const { isSubmitting, onSave } = useFormHandler<ProductMutation, Product | null>({
+    create: createProduct.createProduct,
+    update: updateProduct.updateProduct,
+    entityLabel: 'Producto',
+    getId: () => (modal.mode === 'edit' ? modal.product.id : null),
+    notify,
+    onSuccess: async () => {
+      setModal({ mode: 'create', open: false, product: null })
+      await refetch()
+    },
+  })
 
   const handleDeactivate = async () => {
     if (!productToDeactivate) {
@@ -78,7 +81,7 @@ export const ProductsPage = () => {
     const success = await deactivateProduct.deactivateProduct(productToDeactivate.id)
 
     if (success) {
-      setMessage('Producto desactivado')
+      setMessage({ severity: 'success', text: 'Producto desactivado' })
       setProductToDeactivate(null)
       await refetch()
     }
@@ -195,10 +198,10 @@ export const ProductsPage = () => {
       <ProductModal
         categories={categories}
         initialData={modal.product}
-        loading={mutationLoading}
+        loading={mutationLoading || isSubmitting}
         mode={modal.mode}
         onClose={() => setModal({ mode: 'create', open: false, product: null })}
-        onSubmit={handleSubmit}
+        onSubmit={onSave}
         open={modal.open}
       />
 
@@ -212,13 +215,13 @@ export const ProductsPage = () => {
         title="Desactivar producto"
       />
 
-      <Snackbar
-        autoHideDuration={3000}
-        onClose={() => setMessage(null)}
-        open={Boolean(message)}
-      >
-        <Alert onClose={() => setMessage(null)} severity="success" variant="filled">
-          {message}
+      <Snackbar autoHideDuration={3000} onClose={() => setMessage(null)} open={Boolean(message)}>
+        <Alert
+          onClose={() => setMessage(null)}
+          severity={message?.severity ?? 'success'}
+          variant="filled"
+        >
+          {message?.text}
         </Alert>
       </Snackbar>
     </Stack>

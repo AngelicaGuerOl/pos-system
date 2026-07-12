@@ -16,14 +16,26 @@ import { useAuth } from '../hooks/useAuth'
 import { useChangePassword } from '../hooks/useChangePassword'
 import { PasswordVisibilityAdornment } from './PasswordVisibilityAdornment'
 
-export const ChangePasswordForm = () => {
+type ChangePasswordFormProps = {
+  onSuccess?: () => void
+  showLogout?: boolean
+  subtitle?: string
+  variant?: 'card' | 'embedded'
+}
+
+export const ChangePasswordForm = ({
+  onSuccess,
+  showLogout = true,
+  subtitle = 'Debes actualizar tu contrasena antes de continuar.',
+  variant = 'card',
+}: ChangePasswordFormProps) => {
   const [visibleFields, setVisibleFields] = useState({
     currentPassword: false,
     newPassword: false,
     confirmPassword: false,
   })
   const { logout } = useAuth()
-  const { errorMessage, form, loading, onSubmit } = useChangePassword()
+  const { errorMessage, form, loading, onSubmit } = useChangePassword({ onSuccess })
   const {
     formState: { errors },
     register,
@@ -36,19 +48,7 @@ export const ChangePasswordForm = () => {
     }))
   }
 
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 2,
-        boxShadow: '0 18px 50px rgba(15, 23, 42, 0.10)',
-        maxWidth: 460,
-        p: { xs: 3, sm: 4 },
-        width: '100%',
-      }}
-    >
+  const content = (
       <Stack spacing={3}>
         <Stack spacing={1.5} sx={{ alignItems: 'center', textAlign: 'center' }}>
           <Box
@@ -70,7 +70,7 @@ export const ChangePasswordForm = () => {
               Cambiar contrasena
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Debes actualizar tu contrasena antes de continuar.
+              {subtitle}
             </Typography>
           </Box>
         </Stack>
@@ -158,18 +158,40 @@ export const ChangePasswordForm = () => {
             >
               {loading ? <CircularProgress color="inherit" size={22} /> : 'Actualizar contrasena'}
             </Button>
-            <Button
-              color="inherit"
-              disabled={loading}
-              fullWidth
-              onClick={() => void logout()}
-              variant="text"
-            >
-              Cerrar sesion
-            </Button>
+            {showLogout ? (
+              <Button
+                color="inherit"
+                disabled={loading}
+                fullWidth
+                onClick={() => void logout()}
+                variant="text"
+              >
+                Cerrar sesion
+              </Button>
+            ) : null}
           </Stack>
         </Box>
       </Stack>
+  )
+
+  if (variant === 'embedded') {
+    return <Box sx={{ width: '100%' }}>{content}</Box>
+  }
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 2,
+        boxShadow: '0 18px 50px rgba(15, 23, 42, 0.10)',
+        maxWidth: 460,
+        p: { xs: 3, sm: 4 },
+        width: '100%',
+      }}
+    >
+      {content}
     </Paper>
   )
 }

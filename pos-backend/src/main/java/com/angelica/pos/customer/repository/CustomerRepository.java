@@ -13,7 +13,12 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Optional<Customer> findByIdAndActiveTrue(Long id);
 
-    Page<Customer> findAllByActiveTrue(Pageable pageable);
+    @Query("""
+            SELECT c
+            FROM Customer c
+            WHERE c.active = true
+            """)
+    Page<Customer> findAllActive(Pageable pageable);
 
     boolean existsByFirstNameIgnoreCaseAndLastNameIgnoreCaseAndPhoneIgnoreCaseAndActiveTrue(
             String firstName,
@@ -33,13 +38,12 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
             FROM Customer c
             WHERE c.active = true
               AND (
-                    :search IS NULL
-                    OR LOWER(c.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
+                    LOWER(c.firstName) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(c.lastName) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(c.phone) LIKE LOWER(CONCAT('%', :search, '%'))
               )
             """)
-    Page<Customer> findAllActiveWithFilters(
+    Page<Customer> findAllActiveWithSearch(
             @Param("search") String search,
             Pageable pageable
     );

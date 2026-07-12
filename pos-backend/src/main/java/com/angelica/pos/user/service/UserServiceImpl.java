@@ -52,7 +52,10 @@ public class UserServiceImpl implements UserService {
     public PageResponse<UserResponse> findAllActive(String search, Pageable pageable) {
         validatePageSize(pageable);
 
-        Page<User> usersPage = userRepository.findAllActiveWithFilters(normalizeSearch(search), pageable);
+        String normalizedSearch = normalizeSearch(search);
+        Page<User> usersPage = normalizedSearch == null
+                ? userRepository.findAllActive(pageable)
+                : userRepository.findAllActiveWithSearch(normalizedSearch, pageable);
         List<UserResponse> content = userMapper.toResponseList(usersPage.getContent());
 
         return PageResponse.<UserResponse>builder()

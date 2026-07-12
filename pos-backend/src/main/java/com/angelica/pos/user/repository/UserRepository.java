@@ -30,12 +30,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
             SELECT u
             FROM User u
             WHERE u.active = true
+            """)
+    Page<User> findAllActive(Pageable pageable);
+
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.active = true
               AND (
-                    :search IS NULL
-                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
+                    LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
               )
             """)
-    Page<User> findAllActiveWithFilters(
+    Page<User> findAllActiveWithSearch(
             @Param("search") String search,
             Pageable pageable
     );

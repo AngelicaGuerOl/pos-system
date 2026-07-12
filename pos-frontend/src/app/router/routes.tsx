@@ -2,7 +2,9 @@ import { Navigate, type RouteObject } from 'react-router-dom'
 import { ChangePasswordPage, LoginPage } from '../../features/auth'
 import { CategoriesPage } from '../../features/catalog/categories'
 import { ProductsPage } from '../../features/catalog/products'
+import { CustomersPage } from '../../features/customers'
 import { DashboardPage } from '../../features/dashboard'
+import { UsersPage } from '../../features/users'
 import { ProtectedRoute } from '../../shared/routes/ProtectedRoute'
 import { PublicRoute } from '../../shared/routes/PublicRoute'
 import { ROUTE_PATHS } from '../../shared/routes/routePaths'
@@ -27,12 +29,12 @@ export const appRoutes: RouteObject[] = [
     element: <ProtectedRoute />,
     children: [
       {
+        path: ROUTE_PATHS.changePassword,
+        element: <ChangePasswordPage />,
+      },
+      {
         element: <DashboardLayout />,
         children: [
-          {
-            path: ROUTE_PATHS.changePassword,
-            element: <ChangePasswordPage />,
-          },
           {
             path: ROUTE_PATHS.dashboard,
             element: <DashboardPage />,
@@ -47,7 +49,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: ROUTE_PATHS.customers,
-            element: <PlaceholderPage title="Clientes" />,
+            element: <CustomersPage />,
           },
           {
             path: ROUTE_PATHS.sales,
@@ -55,7 +57,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: ROUTE_PATHS.users,
-            element: <PlaceholderPage title="Usuarios" />,
+            element: <UsersPage />,
           },
         ],
       },

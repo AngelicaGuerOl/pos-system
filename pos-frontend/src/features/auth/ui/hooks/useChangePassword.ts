@@ -11,7 +11,11 @@ import {
 } from '../schemas/changePasswordSchema'
 import { useAuth } from './useAuth'
 
-export const useChangePassword = () => {
+type UseChangePasswordOptions = {
+  onSuccess?: () => void
+}
+
+export const useChangePassword = (options: UseChangePasswordOptions = {}) => {
   const navigate = useNavigate()
   const { changePassword } = useAuth()
   const [apiError, setApiError] = useState<NormalizedApiError | null>(null)
@@ -36,6 +40,11 @@ export const useChangePassword = () => {
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
       })
+      if (options.onSuccess) {
+        options.onSuccess()
+        return
+      }
+
       navigate(ROUTE_PATHS.dashboard, { replace: true })
     } catch (error) {
       setApiError(normalizeApiError(error))
@@ -49,4 +58,3 @@ export const useChangePassword = () => {
     onSubmit,
   }
 }
-

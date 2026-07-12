@@ -9,18 +9,24 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import {
   AppBar,
   Avatar,
   Box,
+  Button,
   Collapse,
   Divider,
+  Dialog,
+  DialogContent,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   Toolbar,
   Typography,
@@ -29,7 +35,7 @@ import {
 } from '@mui/material'
 import { useState, type ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../features/auth'
+import { ChangePasswordForm, useAuth } from '../../../features/auth'
 import { ROUTE_PATHS } from '../../routes/routePaths'
 
 const DRAWER_WIDTH = 280
@@ -83,6 +89,8 @@ const navigationItems: NavigationItem[] = [
 export const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [catalogOpen, setCatalogOpen] = useState(true)
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const theme = useTheme()
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'))
   const navigate = useNavigate()
@@ -100,7 +108,13 @@ export const DashboardLayout = () => {
 
   const handleLogout = async () => {
     await logout()
+    setUserMenuAnchor(null)
     navigate(ROUTE_PATHS.login, { replace: true })
+  }
+
+  const handleChangePassword = () => {
+    setUserMenuAnchor(null)
+    setChangePasswordOpen(true)
   }
 
   const drawerContent = (
@@ -180,24 +194,6 @@ export const DashboardLayout = () => {
           )
         })}
       </List>
-
-      <Divider />
-
-      <Box sx={{ p: 2 }}>
-        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-          <Avatar sx={{ bgcolor: 'secondary.main', height: 36, width: 36 }}>
-            {user?.username?.slice(0, 1).toUpperCase() ?? 'U'}
-          </Avatar>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography noWrap sx={{ fontWeight: 700 }} variant="body2">
-              {user?.username ?? 'Usuario'}
-            </Typography>
-            <Typography color="text.secondary" variant="caption">
-              {user?.role ?? 'Sin rol'}
-            </Typography>
-          </Box>
-        </Stack>
-      </Box>
     </Box>
   )
 
@@ -223,15 +219,55 @@ export const DashboardLayout = () => {
             ) : null}
             <Box>
               <Typography sx={{ fontWeight: 800 }}>Panel administrativo</Typography>
-              <Typography color="text.secondary" variant="caption">
-                {user?.username ?? 'Usuario'} · {user?.role ?? 'Sin rol'}
-              </Typography>
             </Box>
           </Stack>
 
-          <IconButton aria-label="Cerrar sesion" onClick={handleLogout}>
-            <LogoutRoundedIcon />
-          </IconButton>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            <Button
+              color="inherit"
+              endIcon={<ExpandMoreRoundedIcon />}
+              onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+              sx={{
+                borderRadius: 1,
+                minWidth: 0,
+                px: { xs: 1, sm: 1.5 },
+                textAlign: 'left',
+              }}
+            >
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+                <Avatar sx={{ bgcolor: 'secondary.main', height: 32, width: 32 }}>
+                  {user?.username?.slice(0, 1).toUpperCase() ?? 'U'}
+                </Avatar>
+                <Box sx={{ display: { xs: 'none', sm: 'block' }, minWidth: 0 }}>
+                  <Typography noWrap sx={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>
+                    {user?.username ?? 'Usuario'}
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ lineHeight: 1.15 }} variant="caption">
+                    {user?.role ?? 'Sin rol'}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Button>
+
+            <Menu
+              anchorEl={userMenuAnchor}
+              onClose={() => setUserMenuAnchor(null)}
+              open={Boolean(userMenuAnchor)}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <MenuItem onClick={handleChangePassword}>
+                <ListItemIcon>
+                  <VpnKeyRoundedIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Cambiar contrasena" />
+              </MenuItem>
+            </Menu>
+
+            <IconButton aria-label="Cerrar sesion" onClick={handleLogout}>
+              <LogoutRoundedIcon />
+            </IconButton>
+          </Stack>
         </Toolbar>
       </AppBar>
 
@@ -277,7 +313,22 @@ export const DashboardLayout = () => {
         <Toolbar />
         <Outlet />
       </Box>
+
+      <Dialog
+        fullWidth
+        maxWidth="sm"
+        onClose={() => setChangePasswordOpen(false)}
+        open={changePasswordOpen}
+      >
+        <DialogContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <ChangePasswordForm
+            onSuccess={() => setChangePasswordOpen(false)}
+            showLogout={false}
+            subtitle="Actualiza tu contrasena de acceso."
+            variant="embedded"
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   )
 }
-

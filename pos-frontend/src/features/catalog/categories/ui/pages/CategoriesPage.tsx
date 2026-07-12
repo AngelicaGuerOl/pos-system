@@ -7,10 +7,12 @@ import {
   Snackbar,
   Stack,
   TextField,
+  type AlertColor,
 } from '@mui/material'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../../../auth'
 import { ConfirmDialog } from '../../../../../shared/ui/components/ConfirmDialog'
+import { useFormHandler } from '../../../../../shared/lib/forms/useFormHandler'
 import type { Category, CategoryMutation } from '../../domain/entities/Category'
 import { CategoriesGrid } from '../components/CategoriesGrid'
 import { CategoryModal } from '../components/CategoryModal'
@@ -29,7 +31,7 @@ export const CategoriesPage = () => {
   const canManage = user?.role === 'ADMIN'
   const [modal, setModal] = useState<ModalState>({ category: null, mode: 'create', open: false })
   const [categoryToDeactivate, setCategoryToDeactivate] = useState<Category | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ text: string; severity: AlertColor } | null>(null)
   const debounceTimeout = useRef<number | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const { categories, error, loading, refetch, search, setSearch } = useCategories()
@@ -45,20 +47,21 @@ export const CategoriesPage = () => {
   const mutationLoading =
     createCategory.loading || updateCategory.loading || deactivateCategory.loading
 
-  const handleSubmit = async (values: CategoryMutation) => {
-    const result =
-      modal.mode === 'create'
-        ? await createCategory.createCategory(values)
-        : await updateCategory.updateCategory(modal.category.id, values)
+  const notify = useCallback((text: string, severity: 'success' | 'error') => {
+    setMessage({ severity, text })
+  }, [])
 
-    if (!result) {
-      return
-    }
-
-    setModal({ category: null, mode: 'create', open: false })
-    setMessage(modal.mode === 'create' ? 'Categoria creada' : 'Categoria actualizada')
-    await refetch()
-  }
+  const { isSubmitting, onSave } = useFormHandler<CategoryMutation, Category | null>({
+    create: createCategory.createCategory,
+    update: updateCategory.updateCategory,
+    entityLabel: 'Categoria',
+    getId: () => (modal.mode === 'edit' ? modal.category.id : null),
+    notify,
+    onSuccess: async () => {
+      setModal({ category: null, mode: 'create', open: false })
+      await refetch()
+    },
+  })
 
   const handleDeactivate = async () => {
     if (!categoryToDeactivate) {
@@ -68,7 +71,7 @@ export const CategoriesPage = () => {
     const success = await deactivateCategory.deactivateCategory(categoryToDeactivate.id)
 
     if (success) {
-      setMessage('Categoria desactivada')
+      setMessage({ severity: 'success', text: 'Categoria desactivada' })
       setCategoryToDeactivate(null)
       await refetch()
     }
@@ -133,10 +136,10 @@ export const CategoriesPage = () => {
 
       <CategoryModal
         initialData={modal.category}
-        loading={mutationLoading}
+        loading={mutationLoading || isSubmitting}
         mode={modal.mode}
         onClose={() => setModal({ category: null, mode: 'create', open: false })}
-        onSubmit={handleSubmit}
+        onSubmit={onSave}
         open={modal.open}
       />
 
@@ -150,13 +153,13 @@ export const CategoriesPage = () => {
         title="Desactivar categoria"
       />
 
-      <Snackbar
-        autoHideDuration={3000}
-        onClose={() => setMessage(null)}
-        open={Boolean(message)}
-      >
-        <Alert onClose={() => setMessage(null)} severity="success" variant="filled">
-          {message}
+      <Snackbar autoHideDuration={3000} onClose={() => setMessage(null)} open={Boolean(message)}>
+        <Alert
+          onClose={() => setMessage(null)}
+          severity={message?.severity ?? 'success'}
+          variant="filled"
+        >
+          {message?.text}
         </Alert>
       </Snackbar>
     </Box>
