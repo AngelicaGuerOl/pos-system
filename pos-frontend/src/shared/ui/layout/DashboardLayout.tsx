@@ -75,6 +75,11 @@ const navigationItems: NavigationItem[] = [
     icon: <PeopleRoundedIcon />,
   },
   {
+    label: 'Caja',
+    path: ROUTE_PATHS.cashSessionOpen,
+    icon: <PointOfSaleRoundedIcon />,
+  },
+  {
     label: 'Ventas',
     path: ROUTE_PATHS.sales,
     icon: <ReceiptLongRoundedIcon />,

@@ -2,6 +2,7 @@ import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
 import type { PropsWithChildren } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from '../../features/auth/ui/hooks/useAuth'
+import { CashSessionProvider } from '../../features/cash/session'
 
 const theme = createTheme({
   palette: {
@@ -52,9 +53,10 @@ export const AppProviders = ({ children }: PropsWithChildren) => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <CashSessionProvider>{children}</CashSessionProvider>
+        </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
   )
 }
-
