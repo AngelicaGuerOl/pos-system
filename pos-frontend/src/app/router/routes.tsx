@@ -6,9 +6,11 @@ import { CategoriesPage } from '../../features/catalog/categories'
 import { ProductsPage } from '../../features/catalog/products'
 import { CustomersPage } from '../../features/customers'
 import { DashboardPage } from '../../features/dashboard'
+import { InventoryMovementsPage } from '../../features/inventory/movement'
 import { UsersPage } from '../../features/users'
 import { ProtectedRoute } from '../../shared/routes/ProtectedRoute'
 import { PublicRoute } from '../../shared/routes/PublicRoute'
+import { RoleProtectedRoute } from '../../shared/routes/RoleProtectedRoute'
 import { ROUTE_PATHS } from '../../shared/routes/routePaths'
 import { DashboardLayout } from '../../shared/ui/layout/DashboardLayout'
 import { PlaceholderPage } from '../../shared/ui/pages/PlaceholderPage'
@@ -56,6 +58,15 @@ export const appRoutes: RouteObject[] = [
           {
             path: ROUTE_PATHS.cashSessionOpen,
             element: <OpenCashSessionPage />,
+          },
+          {
+            element: <RoleProtectedRoute roles={['ADMIN']} />,
+            children: [
+              {
+                path: ROUTE_PATHS.inventoryMovements,
+                element: <InventoryMovementsPage />,
+              },
+            ],
           },
           {
             element: <RequireOpenCashSession />,

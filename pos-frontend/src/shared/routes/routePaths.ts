@@ -4,6 +4,7 @@ export const ROUTE_PATHS = {
   dashboard: '/dashboard',
   cashSessionOpen: '/cash-session/open',
   cashMovements: '/cash/movements',
+  inventoryMovements: '/inventory/movements',
   categories: '/catalog/categories',
   products: '/catalog/products',
   customers: '/customers',

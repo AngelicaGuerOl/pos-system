@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { PRODUCT_UNITS } from '../../domain/entities/Product'
 
+const hasUpToTwoDecimals = (value: number): boolean => {
+  return Number.isInteger(Math.round(value * 100) - value * 100)
+}
+
 export const productSchema = z
   .object({
     categoryId: z.number().positive('La categoria es obligatoria'),
@@ -23,8 +27,14 @@ export const productSchema = z
     unit: z.enum(PRODUCT_UNITS, { error: 'La unidad es obligatoria' }),
     costPrice: z.number().min(0, 'El precio de costo debe ser mayor o igual a 0'),
     salePrice: z.number().min(0, 'El precio de venta debe ser mayor o igual a 0'),
-    currentStock: z.number().min(0, 'El stock actual debe ser mayor o igual a 0'),
-    minimumStock: z.number().min(0, 'El stock minimo debe ser mayor o igual a 0'),
+    currentStock: z
+      .number()
+      .min(0, 'El stock inicial debe ser mayor o igual a 0')
+      .refine(hasUpToTwoDecimals, 'El stock inicial debe tener maximo 2 decimales'),
+    minimumStock: z
+      .number()
+      .min(0, 'El stock minimo debe ser mayor o igual a 0')
+      .refine(hasUpToTwoDecimals, 'El stock minimo debe tener maximo 2 decimales'),
   })
   .refine((data) => data.salePrice >= data.costPrice, {
     message: 'El precio de venta debe ser mayor o igual al costo',

@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Box,
   Button,
+  Alert,
   FormControl,
   FormHelperText,
   InputLabel,
@@ -167,15 +168,26 @@ export const ProductForm = ({
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <TextField
-            disabled={loading}
-            error={Boolean(errors.currentStock)}
-            fullWidth
-            helperText={errors.currentStock?.message}
-            label="Stock actual"
-            type="number"
-            {...register('currentStock', { valueAsNumber: true })}
-          />
+          {initialValues ? (
+            <TextField
+              disabled
+              fullWidth
+              helperText="Las existencias se modifican desde Movimientos de inventario."
+              label="Stock actual"
+              type="number"
+              value={initialValues.currentStock}
+            />
+          ) : (
+            <TextField
+              disabled={loading}
+              error={Boolean(errors.currentStock)}
+              fullWidth
+              helperText={errors.currentStock?.message ?? 'Existencia inicial del producto.'}
+              label="Stock inicial"
+              type="number"
+              {...register('currentStock', { valueAsNumber: true })}
+            />
+          )}
           <TextField
             disabled={loading}
             error={Boolean(errors.minimumStock)}
@@ -186,6 +198,12 @@ export const ProductForm = ({
             {...register('minimumStock', { valueAsNumber: true })}
           />
         </Stack>
+
+        {initialValues ? (
+          <Alert severity="info">
+            Las existencias se modifican desde Movimientos de inventario.
+          </Alert>
+        ) : null}
 
         <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
           <Button disabled={loading} onClick={onCancel}>

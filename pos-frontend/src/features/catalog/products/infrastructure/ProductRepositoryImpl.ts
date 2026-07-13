@@ -50,7 +50,7 @@ export class ProductRepositoryImpl implements ProductRepository {
   async update(id: number, data: ProductMutation): Promise<Product> {
     const response = await this.client.put<BackendProductResponse>(
       `/products/${id}`,
-      ProductMapper.toRequest(data),
+      ProductMapper.toUpdateRequest(data),
     )
 
     return ProductMapper.toEntity(response.data)
@@ -60,4 +60,3 @@ export class ProductRepositoryImpl implements ProductRepository {
     await this.client.patch(`/products/${id}/deactivate`)
   }
 }
-

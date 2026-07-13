@@ -31,7 +31,7 @@ export type ProductMutation = {
   unit: ProductUnit
   costPrice: number
   salePrice: number
-  currentStock: number
+  currentStock?: number
   minimumStock: number
 }
 
@@ -43,4 +43,3 @@ export const PRODUCT_UNIT_LABELS: Record<ProductUnit, string> = {
   LITER: 'Litro',
   PACKAGE: 'Paquete',
 }
-

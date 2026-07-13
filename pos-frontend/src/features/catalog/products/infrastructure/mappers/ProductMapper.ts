@@ -30,6 +30,8 @@ export type BackendProductRequest = {
   minimumStock: number
 }
 
+export type BackendProductUpdateRequest = Omit<BackendProductRequest, 'currentStock'>
+
 export const ProductMapper = {
   toEntity(response: BackendProductResponse): Product {
     return {
@@ -66,9 +68,21 @@ export const ProductMapper = {
       unit: data.unit,
       costPrice: data.costPrice,
       salePrice: data.salePrice,
-      currentStock: data.currentStock,
+      currentStock: data.currentStock ?? 0,
+      minimumStock: data.minimumStock,
+    }
+  },
+
+  toUpdateRequest(data: ProductMutation): BackendProductUpdateRequest {
+    return {
+      categoryId: data.categoryId,
+      barcode: data.barcode.trim(),
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      unit: data.unit,
+      costPrice: data.costPrice,
+      salePrice: data.salePrice,
       minimumStock: data.minimumStock,
     }
   },
 }
-

@@ -4,6 +4,7 @@ import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
+import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
@@ -36,6 +37,7 @@ import {
 import { useState, type ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ChangePasswordForm, useAuth } from '../../../features/auth'
+import type { UserRole } from '../../../features/auth'
 import { ROUTE_PATHS } from '../../routes/routePaths'
 
 const DRAWER_WIDTH = 280
@@ -44,6 +46,7 @@ type NavigationItem = {
   label: string
   path?: string
   icon: ReactNode
+  roles?: UserRole[]
   children?: NavigationItem[]
 }
 
@@ -67,6 +70,12 @@ const navigationItems: NavigationItem[] = [
         path: ROUTE_PATHS.products,
         icon: <Inventory2RoundedIcon />,
       },
+      {
+        label: 'Movimientos de inventario',
+        path: ROUTE_PATHS.inventoryMovements,
+        icon: <InventoryRoundedIcon />,
+        roles: ['ADMIN'],
+      },
     ],
   },
   {
@@ -88,6 +97,7 @@ const navigationItems: NavigationItem[] = [
     label: 'Usuarios',
     path: ROUTE_PATHS.users,
     icon: <GroupRoundedIcon />,
+    roles: ['ADMIN'],
   },
 ]
 
@@ -150,11 +160,20 @@ export const DashboardLayout = () => {
       <Divider />
 
       <List sx={{ flex: 1, px: 1.5, py: 2 }}>
-        {navigationItems.map((item) => {
+        {navigationItems
+          .filter((item) => !item.roles || (user && item.roles.includes(user.role)))
+          .map((item) => {
           const selected = item.path ? location.pathname === item.path : false
 
           if (item.children) {
-            const childSelected = item.children.some((child) => child.path === location.pathname)
+            const visibleChildren = item.children.filter(
+              (child) => !child.roles || (user && child.roles.includes(user.role)),
+            )
+            const childSelected = visibleChildren.some((child) => child.path === location.pathname)
+
+            if (visibleChildren.length === 0) {
+              return null
+            }
 
             return (
               <Box key={item.label}>
@@ -169,7 +188,7 @@ export const DashboardLayout = () => {
                 </ListItemButton>
                 <Collapse in={catalogOpen} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding sx={{ pl: 1.5 }}>
-                    {item.children.map((child) => (
+                    {visibleChildren.map((child) => (
                       <ListItemButton
                         key={child.label}
                         onClick={() => handleNavigate(child.path)}
