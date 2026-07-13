@@ -30,7 +30,7 @@ export const OpenCashSessionPage = () => {
     const session = await openCashSession(values)
 
     if (session) {
-      navigate(ROUTE_PATHS.sales, { replace: true })
+      navigate(ROUTE_PATHS.cashMovements, { replace: true })
     }
   }
 
@@ -99,11 +99,11 @@ export const OpenCashSessionPage = () => {
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
                 <Button
-                  onClick={() => navigate(ROUTE_PATHS.sales)}
+                  onClick={() => navigate(ROUTE_PATHS.cashMovements)}
                   startIcon={<ReceiptLongRoundedIcon />}
                   variant="contained"
                 >
-                  Ir a ventas
+                  Ir a movimientos
                 </Button>
                 <Button onClick={() => navigate(ROUTE_PATHS.dashboard)}>Ir al dashboard</Button>
               </Stack>

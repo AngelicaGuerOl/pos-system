@@ -76,7 +76,7 @@ const navigationItems: NavigationItem[] = [
   },
   {
     label: 'Caja',
-    path: ROUTE_PATHS.cashSessionOpen,
+    path: ROUTE_PATHS.cashMovements,
     icon: <PointOfSaleRoundedIcon />,
   },
   {

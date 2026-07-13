@@ -1,5 +1,6 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import { ChangePasswordPage, LoginPage } from '../../features/auth'
+import { CashMovementsPage } from '../../features/cash/movement'
 import { OpenCashSessionPage, RequireOpenCashSession } from '../../features/cash/session'
 import { CategoriesPage } from '../../features/catalog/categories'
 import { ProductsPage } from '../../features/catalog/products'
@@ -59,6 +60,10 @@ export const appRoutes: RouteObject[] = [
           {
             element: <RequireOpenCashSession />,
             children: [
+              {
+                path: ROUTE_PATHS.cashMovements,
+                element: <CashMovementsPage />,
+              },
               {
                 path: ROUTE_PATHS.sales,
                 element: <PlaceholderPage title="Ventas" />,

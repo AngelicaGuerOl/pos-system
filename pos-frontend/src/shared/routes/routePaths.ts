@@ -3,6 +3,7 @@ export const ROUTE_PATHS = {
   changePassword: '/change-password',
   dashboard: '/dashboard',
   cashSessionOpen: '/cash-session/open',
+  cashMovements: '/cash/movements',
   categories: '/catalog/categories',
   products: '/catalog/products',
   customers: '/customers',
