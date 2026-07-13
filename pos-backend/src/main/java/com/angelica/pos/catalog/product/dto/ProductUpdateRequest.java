@@ -39,10 +39,6 @@ public class ProductUpdateRequest {
     @DecimalMin(value = "0.00", message = "El precio de venta debe ser mayor o igual a 0")
     private BigDecimal salePrice;
 
-    @NotNull(message = "El stock actual es obligatorio")
-    @DecimalMin(value = "0.00", message = "El stock actual debe ser mayor o igual a 0")
-    private BigDecimal currentStock;
-
     @NotNull(message = "El stock minimo es obligatorio")
     @DecimalMin(value = "0.00", message = "El stock minimo debe ser mayor o igual a 0")
     private BigDecimal minimumStock;

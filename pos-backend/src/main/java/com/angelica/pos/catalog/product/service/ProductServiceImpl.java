@@ -11,6 +11,8 @@ import com.angelica.pos.catalog.product.exception.ProductAlreadyExistsException;
 import com.angelica.pos.catalog.product.exception.ProductNotFoundException;
 import com.angelica.pos.catalog.product.mapper.ProductMapper;
 import com.angelica.pos.catalog.product.repository.ProductRepository;
+import com.angelica.pos.inventory.movement.service.InventoryMovementService;
+import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.shared.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,10 +32,11 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
+    private final InventoryMovementService inventoryMovementService;
 
     @Override
     @Transactional
-    public ProductResponse create(ProductRequest request) {
+    public ProductResponse create(ProductRequest request, AuthenticatedUser authenticatedUser) {
         Category category = findActiveCategoryById(request.getCategoryId());
         String normalizedBarcode = normalizeBarcode(request.getBarcode());
         validateSalePrice(request.getSalePrice(), request.getCostPrice());
@@ -47,8 +50,13 @@ public class ProductServiceImpl implements ProductService {
         product.setBarcode(normalizedBarcode);
         product.setName(normalizeName(request.getName()));
         product.setDescription(normalizeDescription(request.getDescription()));
+        BigDecimal initialStock = product.getCurrentStock();
+        product.setCurrentStock(BigDecimal.ZERO);
 
         Product savedProduct = productRepository.save(product);
+        if (initialStock.compareTo(BigDecimal.ZERO) > 0) {
+            inventoryMovementService.registerInitialStock(savedProduct.getId(), initialStock, authenticatedUser);
+        }
         return productMapper.toResponse(savedProduct);
     }
 

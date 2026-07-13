@@ -9,6 +9,8 @@ import com.angelica.pos.cash.session.exception.CashSessionAlreadyOpenException;
 import com.angelica.pos.cash.session.exception.CashSessionNotFoundException;
 import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
 import com.angelica.pos.customer.exception.CustomerNotFoundException;
+import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
+import com.angelica.pos.inventory.movement.exception.InventoryMovementNotFoundException;
 import com.angelica.pos.security.InvalidJwtException;
 import com.angelica.pos.user.exception.UserAlreadyExistsException;
 import com.angelica.pos.user.exception.UserNotFoundException;
@@ -20,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -119,6 +122,22 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
     }
 
+    @ExceptionHandler(InventoryMovementNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryMovementNotFound(
+            InventoryMovementNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientStock(
+            InsufficientStockException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
             RuntimeException exception,
@@ -188,6 +207,19 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
                 "El cuerpo de la solicitud no es valido o contiene valores no permitidos",
+                request,
+                null
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "La solicitud contiene parametros invalidos",
                 request,
                 null
         );

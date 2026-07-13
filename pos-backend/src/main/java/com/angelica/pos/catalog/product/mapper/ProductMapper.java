@@ -31,5 +31,6 @@ public interface ProductMapper {
     @Mapping(target = "active", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "currentStock", ignore = true)
     void updateEntityFromRequest(ProductUpdateRequest request, @MappingTarget Product product);
 }
