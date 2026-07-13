@@ -4,6 +4,8 @@ import com.angelica.pos.catalog.category.exception.CategoryAlreadyExistsExceptio
 import com.angelica.pos.catalog.category.exception.CategoryNotFoundException;
 import com.angelica.pos.catalog.product.exception.ProductAlreadyExistsException;
 import com.angelica.pos.catalog.product.exception.ProductNotFoundException;
+import com.angelica.pos.cash.session.exception.CashSessionAlreadyOpenException;
+import com.angelica.pos.cash.session.exception.CashSessionNotFoundException;
 import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
 import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.security.InvalidJwtException;
@@ -87,6 +89,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExists(
             UserAlreadyExistsException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(CashSessionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCashSessionNotFound(
+            CashSessionNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(CashSessionAlreadyOpenException.class)
+    public ResponseEntity<ErrorResponse> handleCashSessionAlreadyOpen(
+            CashSessionAlreadyOpenException exception,
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
