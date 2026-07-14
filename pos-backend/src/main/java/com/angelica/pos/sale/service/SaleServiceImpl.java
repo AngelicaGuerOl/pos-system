@@ -13,6 +13,7 @@ import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.customer.repository.CustomerRepository;
 import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.service.InventoryMovementService;
+import com.angelica.pos.receivable.service.ReceivableService;
 import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleItemRequest;
 import com.angelica.pos.sale.dto.SaleRequest;
@@ -22,7 +23,8 @@ import com.angelica.pos.sale.entity.Sale;
 import com.angelica.pos.sale.entity.SaleItem;
 import com.angelica.pos.sale.entity.SaleStatus;
 import com.angelica.pos.sale.entity.SaleType;
-import com.angelica.pos.sale.exception.CreditSaleNotAvailableException;
+import com.angelica.pos.sale.exception.CreditSaleCashReceivedNotAllowedException;
+import com.angelica.pos.sale.exception.CreditSaleCustomerRequiredException;
 import com.angelica.pos.sale.exception.InsufficientCashReceivedException;
 import com.angelica.pos.sale.exception.SaleAccessDeniedException;
 import com.angelica.pos.sale.exception.SaleNotFoundException;
@@ -64,6 +66,7 @@ public class SaleServiceImpl implements SaleService {
     private final CashSessionRepository cashSessionRepository;
     private final InventoryMovementService inventoryMovementService;
     private final CashMovementService cashMovementService;
+    private final ReceivableService receivableService;
     private final SaleMapper saleMapper;
 
     @Override
@@ -88,11 +91,11 @@ public class SaleServiceImpl implements SaleService {
                 .cashSession(cashSession)
                 .createdBy(user)
                 .customer(customer)
-                .saleType(SaleType.CASH)
+                .saleType(request.getSaleType())
                 .status(SaleStatus.COMPLETED)
                 .cashReceived(request.getCashReceived())
                 .total(BigDecimal.ZERO)
-                .changeAmount(BigDecimal.ZERO)
+                .changeAmount(null)
                 .build();
 
         BigDecimal total = BigDecimal.ZERO;
@@ -114,12 +117,14 @@ public class SaleServiceImpl implements SaleService {
                     .build());
         }
 
-        if (request.getCashReceived().compareTo(total) < 0) {
-            throw new InsufficientCashReceivedException(total, request.getCashReceived());
+        if (request.getSaleType() == SaleType.CASH) {
+            if (request.getCashReceived().compareTo(total) < 0) {
+                throw new InsufficientCashReceivedException(total, request.getCashReceived());
+            }
+            sale.setChangeAmount(request.getCashReceived().subtract(total));
         }
 
         sale.setTotal(total);
-        sale.setChangeAmount(request.getCashReceived().subtract(total));
 
         Sale savedSale = saleRepository.saveAndFlush(sale);
         for (SaleItem item : savedSale.getItems()) {
@@ -130,7 +135,11 @@ public class SaleServiceImpl implements SaleService {
                     user
             );
         }
-        cashMovementService.registerCashSale(cashSession, user, total, savedSale.getId());
+        if (request.getSaleType() == SaleType.CASH) {
+            cashMovementService.registerCashSale(cashSession, user, total, savedSale.getId());
+        } else {
+            receivableService.createForCreditSale(savedSale, customer);
+        }
 
         return saleMapper.toResponse(savedSale);
     }
@@ -192,11 +201,8 @@ public class SaleServiceImpl implements SaleService {
     }
 
     private void validateCreateRequest(SaleRequest request) {
-        if (request.getSaleType() == SaleType.CREDIT) {
-            throw new CreditSaleNotAvailableException();
-        }
-        if (request.getSaleType() != SaleType.CASH) {
-            throw new IllegalArgumentException("Solo se permiten ventas en efectivo");
+        if (request.getSaleType() != SaleType.CASH && request.getSaleType() != SaleType.CREDIT) {
+            throw new IllegalArgumentException("Solo se permiten ventas en efectivo o fiadas");
         }
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("La venta debe incluir al menos un articulo");
@@ -204,8 +210,21 @@ public class SaleServiceImpl implements SaleService {
         if (request.getItems().size() > MAX_LINES) {
             throw new IllegalArgumentException("La venta no debe superar " + MAX_LINES + " lineas");
         }
-        validateCashReceived(request.getCashReceived());
+        if (request.getSaleType() == SaleType.CASH) {
+            validateCashReceived(request.getCashReceived());
+        } else {
+            validateCreditSaleRequest(request);
+        }
         request.getItems().forEach(this::validateSaleItem);
+    }
+
+    private void validateCreditSaleRequest(SaleRequest request) {
+        if (request.getCustomerId() == null) {
+            throw new CreditSaleCustomerRequiredException();
+        }
+        if (request.getCashReceived() != null) {
+            throw new CreditSaleCashReceivedNotAllowedException();
+        }
     }
 
     private void validateCashReceived(BigDecimal cashReceived) {

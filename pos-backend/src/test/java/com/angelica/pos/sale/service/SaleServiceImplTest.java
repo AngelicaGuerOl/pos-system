@@ -24,6 +24,9 @@ import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.mapper.InventoryMovementMapper;
 import com.angelica.pos.inventory.movement.repository.InventoryMovementRepository;
 import com.angelica.pos.inventory.movement.service.InventoryMovementServiceImpl;
+import com.angelica.pos.receivable.entity.Receivable;
+import com.angelica.pos.receivable.entity.ReceivableStatus;
+import com.angelica.pos.receivable.service.ReceivableService;
 import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleItemRequest;
 import com.angelica.pos.sale.dto.SaleRequest;
@@ -33,7 +36,8 @@ import com.angelica.pos.sale.entity.Sale;
 import com.angelica.pos.sale.entity.SaleItem;
 import com.angelica.pos.sale.entity.SaleStatus;
 import com.angelica.pos.sale.entity.SaleType;
-import com.angelica.pos.sale.exception.CreditSaleNotAvailableException;
+import com.angelica.pos.sale.exception.CreditSaleCashReceivedNotAllowedException;
+import com.angelica.pos.sale.exception.CreditSaleCustomerRequiredException;
 import com.angelica.pos.sale.exception.InsufficientCashReceivedException;
 import com.angelica.pos.sale.exception.SaleAccessDeniedException;
 import com.angelica.pos.sale.exception.SaleNotFoundException;
@@ -62,6 +66,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 class SaleServiceImplTest {
 
@@ -72,6 +77,7 @@ class SaleServiceImplTest {
     private CashSessionRepository cashSessionRepository;
     private InventoryMovementRepository inventoryMovementRepository;
     private CashMovementRepository cashMovementRepository;
+    private ReceivableService receivableService;
     private SaleMapper saleMapper;
     private SaleServiceImpl saleService;
 
@@ -84,6 +90,7 @@ class SaleServiceImplTest {
         cashSessionRepository = mock(CashSessionRepository.class);
         inventoryMovementRepository = mock(InventoryMovementRepository.class);
         cashMovementRepository = mock(CashMovementRepository.class);
+        receivableService = mock(ReceivableService.class);
         saleMapper = mock(SaleMapper.class);
 
         InventoryMovementServiceImpl inventoryMovementService = new InventoryMovementServiceImpl(
@@ -106,6 +113,7 @@ class SaleServiceImplTest {
                 cashSessionRepository,
                 inventoryMovementService,
                 cashMovementService,
+                receivableService,
                 saleMapper
         );
     }
@@ -164,6 +172,54 @@ class SaleServiceImplTest {
                         && movement.getSourceId().equals(99L)
                         && movement.getAmount().compareTo(new BigDecimal("175.0000")) == 0
         ));
+        verify(receivableService, never()).createForCreditSale(any(), any());
+    }
+
+    @Test
+    void validCreditSaleCreatesInventoryMovementsAndReceivableWithoutCashMovement() {
+        User user = buildUser(5L, Role.CASHIER);
+        CashSession cashSession = buildCashSession(11L, user);
+        Customer customer = buildCustomer(8L);
+        Product product = buildProduct(1L, "Cafe", "10.00", "70.00", "45.00", true);
+        SaleRequest request = request(SaleType.CREDIT, null, 8L, item(1L, "2.00"));
+        SaleResponse response = new SaleResponse();
+        response.setId(99L);
+
+        when(userRepository.findByIdAndActiveTrue(user.getId())).thenReturn(Optional.of(user));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.of(cashSession));
+        when(customerRepository.findByIdAndActiveTrue(customer.getId())).thenReturn(Optional.of(customer));
+        when(productRepository.findAllActiveByIdInForUpdate(List.of(1L))).thenReturn(List.of(product));
+        when(saleRepository.saveAndFlush(any(Sale.class))).thenAnswer(invocation -> assignIds(invocation.getArgument(0)));
+        when(inventoryMovementRepository.save(any(InventoryMovement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(receivableService.createForCreditSale(any(Sale.class), eq(customer))).thenReturn(Receivable.builder()
+                .id(50L)
+                .customer(customer)
+                .originalAmount(new BigDecimal("140.0000"))
+                .paidAmount(BigDecimal.ZERO)
+                .outstandingBalance(new BigDecimal("140.0000"))
+                .status(ReceivableStatus.PENDING)
+                .build());
+        when(saleMapper.toResponse(any(Sale.class))).thenReturn(response);
+
+        SaleResponse result = saleService.create(request, new AuthenticatedUser(user));
+
+        assertEquals(99L, result.getId());
+        assertEquals(new BigDecimal("8.00"), product.getCurrentStock());
+        verify(saleRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(sale ->
+                sale.getCustomer() == customer
+                        && sale.getSaleType() == SaleType.CREDIT
+                        && sale.getStatus() == SaleStatus.COMPLETED
+                        && sale.getTotal().compareTo(new BigDecimal("140.0000")) == 0
+                        && sale.getCashReceived() == null
+                        && sale.getChangeAmount() == null
+        ));
+        verify(inventoryMovementRepository).save(any(InventoryMovement.class));
+        verify(cashMovementRepository, never()).save(any(CashMovement.class));
+        verify(receivableService).createForCreditSale(org.mockito.ArgumentMatchers.argThat(sale ->
+                sale.getId().equals(99L)
+                        && sale.getTotal().compareTo(new BigDecimal("140.0000")) == 0
+        ), eq(customer));
     }
 
     @Test
@@ -286,13 +342,48 @@ class SaleServiceImplTest {
     }
 
     @Test
-    void creditSaleIsRejected() {
+    void creditSaleWithoutCustomerIsRejected() {
         User user = buildUser(5L, Role.CASHIER);
 
         assertThrows(
-                CreditSaleNotAvailableException.class,
-                () -> saleService.create(request(SaleType.CREDIT, "100.00", null, item(1L, "1.00")), new AuthenticatedUser(user))
+                CreditSaleCustomerRequiredException.class,
+                () -> saleService.create(request(SaleType.CREDIT, null, null, item(1L, "1.00")), new AuthenticatedUser(user))
         );
+    }
+
+    @Test
+    void creditSaleWithCashReceivedIsRejected() {
+        User user = buildUser(5L, Role.CASHIER);
+
+        assertThrows(
+                CreditSaleCashReceivedNotAllowedException.class,
+                () -> saleService.create(request(SaleType.CREDIT, "100.00", 8L, item(1L, "1.00")), new AuthenticatedUser(user))
+        );
+    }
+
+    @Test
+    void receivableCreationFailurePropagatesInsideCreditSaleTransaction() {
+        User user = buildUser(5L, Role.CASHIER);
+        CashSession cashSession = buildCashSession(11L, user);
+        Customer customer = buildCustomer(8L);
+        Product product = buildProduct(1L, "Cafe", "10.00", "70.00", "45.00", true);
+        SaleRequest request = request(SaleType.CREDIT, null, 8L, item(1L, "1.00"));
+
+        when(userRepository.findByIdAndActiveTrue(user.getId())).thenReturn(Optional.of(user));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.of(cashSession));
+        when(customerRepository.findByIdAndActiveTrue(customer.getId())).thenReturn(Optional.of(customer));
+        when(productRepository.findAllActiveByIdInForUpdate(List.of(1L))).thenReturn(List.of(product));
+        when(saleRepository.saveAndFlush(any(Sale.class))).thenAnswer(invocation -> assignIds(invocation.getArgument(0)));
+        when(inventoryMovementRepository.save(any(InventoryMovement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new IllegalStateException("receivable failure"))
+                .when(receivableService).createForCreditSale(any(Sale.class), eq(customer));
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> saleService.create(request, new AuthenticatedUser(user))
+        );
+        verify(cashMovementRepository, never()).save(any(CashMovement.class));
     }
 
     @Test
@@ -510,7 +601,7 @@ class SaleServiceImplTest {
         SaleRequest request = new SaleRequest();
         request.setSaleType(saleType);
         request.setCustomerId(customerId);
-        request.setCashReceived(new BigDecimal(cashReceived));
+        request.setCashReceived(cashReceived == null ? null : new BigDecimal(cashReceived));
         request.setItems(List.of(items));
         return request;
     }
@@ -576,7 +667,12 @@ class SaleServiceImplTest {
                 SaleType.CASH,
                 SaleStatus.COMPLETED,
                 new BigDecimal("100.00"),
-                1L
+                1L,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

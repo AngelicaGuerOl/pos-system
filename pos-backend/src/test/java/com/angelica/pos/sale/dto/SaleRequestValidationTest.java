@@ -35,6 +35,18 @@ class SaleRequestValidationTest {
     }
 
     @Test
+    void validCreditSaleRequestWithNullCashReceivedPassesValidation() {
+        SaleRequest request = validRequest();
+        request.setSaleType(SaleType.CREDIT);
+        request.setCustomerId(8L);
+        request.setCashReceived(null);
+
+        Set<ConstraintViolation<SaleRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.isEmpty());
+    }
+
+    @Test
     void emptyItemsIsRejected() {
         SaleRequest request = validRequest();
         request.setItems(List.of());

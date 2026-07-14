@@ -163,7 +163,12 @@ class SaleControllerTest {
                 SaleType.CASH,
                 SaleStatus.COMPLETED,
                 new BigDecimal("100.00"),
-                1L
+                1L,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 

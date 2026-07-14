@@ -16,7 +16,7 @@ import java.util.Optional;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
-    @EntityGraph(attributePaths = {"cashSession", "createdBy", "customer", "items", "items.product"})
+    @EntityGraph(attributePaths = {"cashSession", "createdBy", "customer", "items", "items.product", "receivable"})
     @Query("""
             SELECT s
             FROM Sale s
@@ -36,15 +36,23 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                         s.saleType,
                         s.status,
                         s.total,
-                        COUNT(item.id)
+                        COUNT(item.id),
+                        receivable.id,
+                        receivable.originalAmount,
+                        receivable.paidAmount,
+                        receivable.outstandingBalance,
+                        receivable.status
                     )
                     FROM Sale s
                     JOIN s.createdBy createdBy
                     LEFT JOIN s.customer customer
                     LEFT JOIN s.items item
+                    LEFT JOIN s.receivable receivable
                     WHERE s.cashSession.id = :cashSessionId
                     GROUP BY s.id, s.createdAt, createdBy.id, createdBy.username, customer.id,
-                             customer.firstName, customer.lastName, s.saleType, s.status, s.total
+                             customer.firstName, customer.lastName, s.saleType, s.status, s.total,
+                             receivable.id, receivable.originalAmount, receivable.paidAmount,
+                             receivable.outstandingBalance, receivable.status
                     """,
             countQuery = """
                     SELECT COUNT(s.id)
@@ -69,12 +77,18 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                         s.saleType,
                         s.status,
                         s.total,
-                        COUNT(item.id)
+                        COUNT(item.id),
+                        receivable.id,
+                        receivable.originalAmount,
+                        receivable.paidAmount,
+                        receivable.outstandingBalance,
+                        receivable.status
                     )
                     FROM Sale s
                     JOIN s.createdBy createdBy
                     LEFT JOIN s.customer customer
                     LEFT JOIN s.items item
+                    LEFT JOIN s.receivable receivable
                     WHERE (:id IS NULL OR s.id = :id)
                       AND (:customerId IS NULL OR customer.id = :customerId)
                       AND (:createdByUserId IS NULL OR createdBy.id = :createdByUserId)
@@ -83,7 +97,9 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                       AND s.createdAt >= COALESCE(:from, s.createdAt)
                       AND s.createdAt <= COALESCE(:to, s.createdAt)
                     GROUP BY s.id, s.createdAt, createdBy.id, createdBy.username, customer.id,
-                             customer.firstName, customer.lastName, s.saleType, s.status, s.total
+                             customer.firstName, customer.lastName, s.saleType, s.status, s.total,
+                             receivable.id, receivable.originalAmount, receivable.paidAmount,
+                             receivable.outstandingBalance, receivable.status
                     """,
             countQuery = """
                     SELECT COUNT(s.id)

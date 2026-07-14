@@ -28,4 +28,6 @@ public interface CashMovementService {
     PageResponse<CashMovementResponse> findSessionMovements(Long sessionId, Pageable pageable);
 
     CashMovement registerCashSale(CashSession cashSession, User user, BigDecimal amount, Long saleId);
+
+    CashMovement registerReceivablePayment(CashSession cashSession, User user, BigDecimal amount, Long paymentId);
 }

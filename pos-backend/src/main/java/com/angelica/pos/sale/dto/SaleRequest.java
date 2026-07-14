@@ -24,7 +24,6 @@ public class SaleRequest {
     @Positive(message = "El cliente debe ser positivo")
     private Long customerId;
 
-    @NotNull(message = "El efectivo recibido es obligatorio")
     @DecimalMin(value = "0.01", message = "El efectivo recibido debe ser mayor que cero")
     @Digits(integer = 10, fraction = 2, message = "El efectivo recibido debe tener hasta 10 enteros y 2 decimales")
     private BigDecimal cashReceived;

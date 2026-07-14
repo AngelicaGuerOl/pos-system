@@ -137,6 +137,30 @@ public class CashMovementServiceImpl implements CashMovementService {
         return cashMovementRepository.save(cashMovement);
     }
 
+    @Override
+    @Transactional
+    public CashMovement registerReceivablePayment(
+            CashSession cashSession,
+            User user,
+            BigDecimal amount,
+            Long paymentId
+    ) {
+        validateReceivablePaymentMovement(cashSession, user, amount, paymentId);
+
+        CashMovement cashMovement = CashMovement.builder()
+                .cashSession(cashSession)
+                .createdBy(user)
+                .direction(CashMovementDirection.INFLOW)
+                .type(CashMovementType.RECEIVABLE_PAYMENT)
+                .amount(amount)
+                .description("Abono a cuenta por cobrar")
+                .sourceType("RECEIVABLE_PAYMENT")
+                .sourceId(paymentId)
+                .build();
+
+        return cashMovementRepository.save(cashMovement);
+    }
+
     private CashMovementResponse registerManualMovement(
             ManualCashMovementRequest request,
             AuthenticatedUser authenticatedUser,
@@ -212,6 +236,35 @@ public class CashMovementServiceImpl implements CashMovementService {
         }
         if (saleId == null || saleId <= 0) {
             throw new IllegalArgumentException("Sale id must be positive");
+        }
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount is required");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+        if (amount.stripTrailingZeros().scale() > MAX_AMOUNT_SCALE) {
+            throw new IllegalArgumentException("Amount must have up to 2 decimals");
+        }
+        if (getIntegerDigits(amount) > MAX_AMOUNT_INTEGER_DIGITS) {
+            throw new IllegalArgumentException("Amount must have up to 10 integer digits");
+        }
+    }
+
+    private void validateReceivablePaymentMovement(
+            CashSession cashSession,
+            User user,
+            BigDecimal amount,
+            Long paymentId
+    ) {
+        if (cashSession == null || cashSession.getId() == null) {
+            throw new IllegalArgumentException("Cash session is required");
+        }
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        if (paymentId == null || paymentId <= 0) {
+            throw new IllegalArgumentException("Payment id must be positive");
         }
         if (amount == null) {
             throw new IllegalArgumentException("Amount is required");

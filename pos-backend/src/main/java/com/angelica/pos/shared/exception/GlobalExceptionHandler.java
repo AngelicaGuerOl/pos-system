@@ -11,6 +11,14 @@ import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
 import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.exception.InventoryMovementNotFoundException;
+import com.angelica.pos.receivable.exception.ReceivableNotFoundException;
+import com.angelica.pos.receivable.exception.SaleAlreadyHasReceivableException;
+import com.angelica.pos.receivable.payment.exception.ReceivableAlreadyPaidException;
+import com.angelica.pos.receivable.payment.exception.ReceivableCancelledException;
+import com.angelica.pos.receivable.payment.exception.ReceivablePaymentExceedsBalanceException;
+import com.angelica.pos.receivable.payment.exception.ReceivablePaymentNotFoundException;
+import com.angelica.pos.sale.exception.CreditSaleCashReceivedNotAllowedException;
+import com.angelica.pos.sale.exception.CreditSaleCustomerRequiredException;
 import com.angelica.pos.sale.exception.CreditSaleNotAvailableException;
 import com.angelica.pos.sale.exception.InsufficientCashReceivedException;
 import com.angelica.pos.sale.exception.SaleAccessDeniedException;
@@ -153,6 +161,53 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CreditSaleNotAvailableException.class)
     public ResponseEntity<ErrorResponse> handleCreditSaleNotAvailable(
             CreditSaleNotAvailableException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            CreditSaleCustomerRequiredException.class,
+            CreditSaleCashReceivedNotAllowedException.class
+    })
+    public ResponseEntity<ErrorResponse> handleInvalidCreditSaleRequest(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(ReceivableNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleReceivableNotFound(
+            ReceivableNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SaleAlreadyHasReceivableException.class)
+    public ResponseEntity<ErrorResponse> handleSaleAlreadyHasReceivable(
+            SaleAlreadyHasReceivableException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(ReceivablePaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleReceivablePaymentNotFound(
+            ReceivablePaymentNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            ReceivableAlreadyPaidException.class,
+            ReceivableCancelledException.class,
+            ReceivablePaymentExceedsBalanceException.class
+    })
+    public ResponseEntity<ErrorResponse> handleReceivablePaymentConflict(
+            RuntimeException exception,
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);

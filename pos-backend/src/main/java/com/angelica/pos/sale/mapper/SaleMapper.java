@@ -1,6 +1,7 @@
 package com.angelica.pos.sale.mapper;
 
 import com.angelica.pos.customer.entity.Customer;
+import com.angelica.pos.receivable.mapper.ReceivableMapper;
 import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleItemResponse;
 import com.angelica.pos.sale.dto.SaleResponse;
@@ -11,7 +12,7 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = ReceivableMapper.class)
 public interface SaleMapper {
 
     @Mapping(target = "cashSessionId", source = "cashSession.id")

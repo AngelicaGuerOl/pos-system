@@ -2,6 +2,7 @@ package com.angelica.pos.sale.entity;
 
 import com.angelica.pos.cash.session.entity.CashSession;
 import com.angelica.pos.customer.entity.Customer;
+import com.angelica.pos.receivable.entity.Receivable;
 import com.angelica.pos.user.entity.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -14,6 +15,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -72,14 +74,12 @@ public class Sale {
     @Column(name = "total", nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
 
-    @NotNull
     @DecimalMin(value = "0.01")
-    @Column(name = "cash_received", nullable = false, precision = 12, scale = 2)
+    @Column(name = "cash_received", precision = 12, scale = 2)
     private BigDecimal cashReceived;
 
-    @NotNull
     @DecimalMin(value = "0.00")
-    @Column(name = "change_amount", nullable = false, precision = 12, scale = 2)
+    @Column(name = "change_amount", precision = 12, scale = 2)
     private BigDecimal changeAmount;
 
     @Column(name = "created_at", nullable = false)
@@ -91,6 +91,9 @@ public class Sale {
     @Builder.Default
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleItem> items = new ArrayList<>();
+
+    @OneToOne(mappedBy = "sale", fetch = FetchType.LAZY)
+    private Receivable receivable;
 
     public void addItem(SaleItem item) {
         items.add(item);
