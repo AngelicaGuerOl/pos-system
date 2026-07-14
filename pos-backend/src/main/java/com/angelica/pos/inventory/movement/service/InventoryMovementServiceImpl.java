@@ -145,6 +145,52 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
     }
 
     @Override
+    @Transactional
+    public InventoryMovement registerSaleMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long saleItemId,
+            User user
+    ) {
+        validateStockMovement(
+                lockedProduct == null ? null : lockedProduct.getId(),
+                quantity,
+                "Venta",
+                InventoryMovementDirection.OUT,
+                InventoryMovementType.SALE,
+                "SALE_ITEM",
+                saleItemId
+        );
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+
+        BigDecimal previousStock = lockedProduct.getCurrentStock();
+        BigDecimal newStock = calculateNewStock(
+                lockedProduct,
+                previousStock,
+                quantity,
+                InventoryMovementDirection.OUT
+        );
+        lockedProduct.setCurrentStock(newStock);
+
+        InventoryMovement movement = InventoryMovement.builder()
+                .product(lockedProduct)
+                .createdBy(user)
+                .direction(InventoryMovementDirection.OUT)
+                .type(InventoryMovementType.SALE)
+                .quantity(quantity)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .description("Venta")
+                .sourceType("SALE_ITEM")
+                .sourceId(saleItemId)
+                .build();
+
+        return inventoryMovementRepository.save(movement);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public InventoryMovementResponse findById(Long id) {
         InventoryMovement movement = inventoryMovementRepository.findByIdWithDetails(id)

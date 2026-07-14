@@ -11,6 +11,10 @@ import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
 import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.exception.InventoryMovementNotFoundException;
+import com.angelica.pos.sale.exception.CreditSaleNotAvailableException;
+import com.angelica.pos.sale.exception.InsufficientCashReceivedException;
+import com.angelica.pos.sale.exception.SaleAccessDeniedException;
+import com.angelica.pos.sale.exception.SaleNotFoundException;
 import com.angelica.pos.security.InvalidJwtException;
 import com.angelica.pos.user.exception.UserAlreadyExistsException;
 import com.angelica.pos.user.exception.UserNotFoundException;
@@ -136,6 +140,38 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SaleNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSaleNotFound(
+            SaleNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(CreditSaleNotAvailableException.class)
+    public ResponseEntity<ErrorResponse> handleCreditSaleNotAvailable(
+            CreditSaleNotAvailableException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(InsufficientCashReceivedException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientCashReceived(
+            InsufficientCashReceivedException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SaleAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleSaleAccessDenied(
+            SaleAccessDeniedException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, exception.getMessage(), request, null);
     }
 
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})

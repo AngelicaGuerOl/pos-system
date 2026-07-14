@@ -118,6 +118,25 @@ public class CashMovementServiceImpl implements CashMovementService {
         return toPageResponse(movementsPage);
     }
 
+    @Override
+    @Transactional
+    public CashMovement registerCashSale(CashSession cashSession, User user, BigDecimal amount, Long saleId) {
+        validateSaleMovement(cashSession, user, amount, saleId);
+
+        CashMovement cashMovement = CashMovement.builder()
+                .cashSession(cashSession)
+                .createdBy(user)
+                .direction(CashMovementDirection.INFLOW)
+                .type(CashMovementType.CASH_SALE)
+                .amount(amount)
+                .description("Venta en efectivo")
+                .sourceType("SALE")
+                .sourceId(saleId)
+                .build();
+
+        return cashMovementRepository.save(cashMovement);
+    }
+
     private CashMovementResponse registerManualMovement(
             ManualCashMovementRequest request,
             AuthenticatedUser authenticatedUser,
@@ -181,6 +200,30 @@ public class CashMovementServiceImpl implements CashMovementService {
         }
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
             throw new IllegalArgumentException("Description is required");
+        }
+    }
+
+    private void validateSaleMovement(CashSession cashSession, User user, BigDecimal amount, Long saleId) {
+        if (cashSession == null || cashSession.getId() == null) {
+            throw new IllegalArgumentException("Cash session is required");
+        }
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        if (saleId == null || saleId <= 0) {
+            throw new IllegalArgumentException("Sale id must be positive");
+        }
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount is required");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+        if (amount.stripTrailingZeros().scale() > MAX_AMOUNT_SCALE) {
+            throw new IllegalArgumentException("Amount must have up to 2 decimals");
+        }
+        if (getIntegerDigits(amount) > MAX_AMOUNT_INTEGER_DIGITS) {
+            throw new IllegalArgumentException("Amount must have up to 10 integer digits");
         }
     }
 
