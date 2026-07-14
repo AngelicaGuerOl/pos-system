@@ -2,8 +2,10 @@ import type {
   CreateCashSaleData,
   CreateCashSaleItemData,
   Sale,
+  SaleHistoryFilters,
   SaleItem,
   SaleStatus,
+  SaleSummary,
   SaleType,
 } from '../../domain/entities/Sale'
 import type { ProductUnit } from '../../../catalog/products'
@@ -32,7 +34,21 @@ export type BackendSaleResponse = {
   cashReceived: number
   changeAmount: number
   createdAt: string
+  cancelledAt?: string | null
   items: BackendSaleItemResponse[]
+}
+
+export type BackendSaleSummaryResponse = {
+  id: number
+  createdAt: string
+  createdById: number
+  createdByUsername: string
+  customerId: number | null
+  customerFullName: string | null
+  saleType: SaleType
+  status: SaleStatus
+  total: number
+  totalItems: number
 }
 
 export type BackendCreateCashSaleItemRequest = CreateCashSaleItemData
@@ -59,7 +75,23 @@ export const SaleMapper = {
       cashReceived: Number(response.cashReceived),
       changeAmount: Number(response.changeAmount),
       createdAt: response.createdAt,
+      cancelledAt: response.cancelledAt ?? null,
       items: response.items.map((item) => SaleMapper.toItemEntity(item)),
+    }
+  },
+
+  toSummaryEntity(response: BackendSaleSummaryResponse): SaleSummary {
+    return {
+      id: response.id,
+      createdAt: response.createdAt,
+      createdById: response.createdById,
+      createdByUsername: response.createdByUsername,
+      customerId: response.customerId,
+      customerFullName: response.customerFullName || 'Público general',
+      saleType: response.saleType,
+      status: response.status,
+      total: Number(response.total),
+      totalItems: Number(response.totalItems),
     }
   },
 
@@ -85,6 +117,22 @@ export const SaleMapper = {
         productId: item.productId,
         quantity: item.quantity,
       })),
+    }
+  },
+
+  toFiltersParams(filters: SaleHistoryFilters): Record<string, string | number | undefined> {
+    return {
+      id: filters.id,
+      folio: filters.folio,
+      customerId: filters.customerId,
+      createdByUserId: filters.createdByUserId,
+      status: filters.status,
+      saleType: filters.saleType,
+      from: filters.from,
+      to: filters.to,
+      page: filters.page,
+      size: filters.size,
+      sort: filters.sort ?? 'createdAt,DESC',
     }
   },
 }

@@ -7,7 +7,7 @@ import { ProductsPage } from '../../features/catalog/products'
 import { CustomersPage } from '../../features/customers'
 import { DashboardPage } from '../../features/dashboard'
 import { InventoryMovementsPage } from '../../features/inventory/movement'
-import { SalesPage } from '../../features/sales'
+import { SalesHistoryPage, SalesPage } from '../../features/sales'
 import { UsersPage } from '../../features/users'
 import { ProtectedRoute } from '../../shared/routes/ProtectedRoute'
 import { PublicRoute } from '../../shared/routes/PublicRoute'
@@ -78,6 +78,15 @@ export const appRoutes: RouteObject[] = [
               {
                 path: ROUTE_PATHS.sales,
                 element: <SalesPage />,
+              },
+            ],
+          },
+          {
+            element: <RoleProtectedRoute roles={['ADMIN', 'CASHIER']} />,
+            children: [
+              {
+                path: ROUTE_PATHS.salesHistory,
+                element: <SalesHistoryPage />,
               },
             ],
           },

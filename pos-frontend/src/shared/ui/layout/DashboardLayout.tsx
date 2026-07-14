@@ -10,6 +10,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import {
   AppBar,
@@ -90,8 +91,19 @@ const navigationItems: NavigationItem[] = [
   },
   {
     label: 'Ventas',
-    path: ROUTE_PATHS.sales,
     icon: <ReceiptLongRoundedIcon />,
+    children: [
+      {
+        label: 'Nueva venta',
+        path: ROUTE_PATHS.sales,
+        icon: <ReceiptLongRoundedIcon />,
+      },
+      {
+        label: 'Historial de ventas',
+        path: ROUTE_PATHS.salesHistory,
+        icon: <SearchRoundedIcon />,
+      },
+    ],
   },
   {
     label: 'Usuarios',
@@ -103,7 +115,10 @@ const navigationItems: NavigationItem[] = [
 
 export const DashboardLayout = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [catalogOpen, setCatalogOpen] = useState(true)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    Catalogo: true,
+    Ventas: true,
+  })
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
   const [changePasswordOpen, setChangePasswordOpen] = useState(false)
   const theme = useTheme()
@@ -170,6 +185,7 @@ export const DashboardLayout = () => {
               (child) => !child.roles || (user && child.roles.includes(user.role)),
             )
             const childSelected = visibleChildren.some((child) => child.path === location.pathname)
+            const groupOpen = openGroups[item.label] ?? false
 
             if (visibleChildren.length === 0) {
               return null
@@ -178,15 +194,20 @@ export const DashboardLayout = () => {
             return (
               <Box key={item.label}>
                 <ListItemButton
-                  onClick={() => setCatalogOpen((current) => !current)}
+                  onClick={() =>
+                    setOpenGroups((current) => ({
+                      ...current,
+                      [item.label]: !groupOpen,
+                    }))
+                  }
                   selected={childSelected}
                   sx={{ borderRadius: 1 }}
                 >
                   <ListItemIcon>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.label} />
-                  {catalogOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                  {groupOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
                 </ListItemButton>
-                <Collapse in={catalogOpen} timeout="auto" unmountOnExit>
+                <Collapse in={groupOpen} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding sx={{ pl: 1.5 }}>
                     {visibleChildren.map((child) => (
                       <ListItemButton

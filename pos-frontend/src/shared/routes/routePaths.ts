@@ -9,5 +9,6 @@ export const ROUTE_PATHS = {
   products: '/catalog/products',
   customers: '/customers',
   sales: '/sales',
+  salesHistory: '/sales/history',
   users: '/users',
 } as const
