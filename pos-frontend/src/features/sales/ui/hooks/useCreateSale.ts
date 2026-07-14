@@ -1,20 +1,20 @@
 import { useRef, useState } from 'react'
 import { normalizeApiError, type NormalizedApiError } from '../../../../shared/api/apiError'
 import { saleDependencies } from '../../dependencies'
-import type { CreateCashSaleData, Sale } from '../../domain/entities/Sale'
+import type { CreateSaleData, Sale } from '../../domain/entities/Sale'
 
-export const useCreateCashSale = () => {
+export const useCreateSale = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<NormalizedApiError | null>(null)
   const lastErrorRef = useRef<NormalizedApiError | null>(null)
 
-  const createCashSale = async (data: CreateCashSaleData): Promise<Sale | null> => {
+  const createSale = async (data: CreateSaleData): Promise<Sale | null> => {
     setLoading(true)
     setError(null)
     lastErrorRef.current = null
 
     try {
-      return await saleDependencies.createCashSaleUseCase.execute(data)
+      return await saleDependencies.createSaleUseCase.execute(data)
     } catch (unknownError) {
       const normalizedError = normalizeApiError(unknownError)
       lastErrorRef.current = normalizedError
@@ -26,7 +26,7 @@ export const useCreateCashSale = () => {
   }
 
   return {
-    createCashSale,
+    createSale,
     error,
     getLastError: () => lastErrorRef.current,
     loading,

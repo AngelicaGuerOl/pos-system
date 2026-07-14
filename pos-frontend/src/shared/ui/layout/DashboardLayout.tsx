@@ -9,6 +9,7 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
+import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
@@ -102,6 +103,12 @@ const navigationItems: NavigationItem[] = [
         label: 'Historial de ventas',
         path: ROUTE_PATHS.salesHistory,
         icon: <SearchRoundedIcon />,
+      },
+      {
+        label: 'Cuentas por cobrar',
+        path: ROUTE_PATHS.receivables,
+        icon: <RequestQuoteRoundedIcon />,
+        roles: ['ADMIN'],
       },
     ],
   },

@@ -15,6 +15,7 @@ import {
   type SaleStatus,
   type SaleSummary,
 } from '../../domain/entities/Sale'
+import { ReceivableStatusChip } from '../../../receivables/ui/components/ReceivableStatusChip'
 
 ModuleRegistry.registerModules([AllCommunityModule])
 
@@ -80,6 +81,13 @@ export const SalesHistoryGrid = ({ loading, onViewDetails, sales }: SalesHistory
             variant={value === 'COMPLETED' ? 'filled' : 'outlined'}
           />
         ),
+      },
+      {
+        colId: 'receivableStatus',
+        headerName: 'Cuenta por cobrar',
+        minWidth: 180,
+        cellRenderer: ({ data }: ICellRendererParams<SaleSummary>) =>
+          data?.receivable ? <ReceivableStatusChip status={data.receivable.status} /> : '-',
       },
       {
         colId: 'actions',

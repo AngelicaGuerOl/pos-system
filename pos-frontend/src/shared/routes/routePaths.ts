@@ -10,5 +10,6 @@ export const ROUTE_PATHS = {
   customers: '/customers',
   sales: '/sales',
   salesHistory: '/sales/history',
+  receivables: '/receivables',
   users: '/users',
 } as const

@@ -1,9 +1,10 @@
 import type {
-  CreateCashSaleData,
-  CreateCashSaleItemData,
+  CreateSaleData,
+  CreateSaleItemData,
   Sale,
   SaleHistoryFilters,
   SaleItem,
+  SaleReceivable,
   SaleStatus,
   SaleSummary,
   SaleType,
@@ -31,10 +32,11 @@ export type BackendSaleResponse = {
   saleType: SaleType
   status: SaleStatus
   total: number
-  cashReceived: number
-  changeAmount: number
+  cashReceived: number | null
+  changeAmount: number | null
   createdAt: string
   cancelledAt?: string | null
+  receivable: BackendSaleReceivableResponse | null
   items: BackendSaleItemResponse[]
 }
 
@@ -49,15 +51,24 @@ export type BackendSaleSummaryResponse = {
   status: SaleStatus
   total: number
   totalItems: number
+  receivable: BackendSaleReceivableResponse | null
 }
 
-export type BackendCreateCashSaleItemRequest = CreateCashSaleItemData
+export type BackendSaleReceivableResponse = {
+  id: number
+  originalAmount: number
+  paidAmount: number
+  outstandingBalance: number
+  status: SaleReceivable['status']
+}
 
-export type BackendCreateCashSaleRequest = {
-  saleType: 'CASH'
+export type BackendCreateSaleItemRequest = CreateSaleItemData
+
+export type BackendCreateSaleRequest = {
+  saleType: SaleType
   customerId: number | null
-  cashReceived: number
-  items: BackendCreateCashSaleItemRequest[]
+  cashReceived: number | null
+  items: BackendCreateSaleItemRequest[]
 }
 
 export const SaleMapper = {
@@ -72,10 +83,11 @@ export const SaleMapper = {
       saleType: response.saleType,
       status: response.status,
       total: Number(response.total),
-      cashReceived: Number(response.cashReceived),
-      changeAmount: Number(response.changeAmount),
+      cashReceived: response.cashReceived === null ? null : Number(response.cashReceived),
+      changeAmount: response.changeAmount === null ? null : Number(response.changeAmount),
       createdAt: response.createdAt,
       cancelledAt: response.cancelledAt ?? null,
+      receivable: response.receivable ? SaleMapper.toReceivableEntity(response.receivable) : null,
       items: response.items.map((item) => SaleMapper.toItemEntity(item)),
     }
   },
@@ -92,6 +104,17 @@ export const SaleMapper = {
       status: response.status,
       total: Number(response.total),
       totalItems: Number(response.totalItems),
+      receivable: response.receivable ? SaleMapper.toReceivableEntity(response.receivable) : null,
+    }
+  },
+
+  toReceivableEntity(response: BackendSaleReceivableResponse): SaleReceivable {
+    return {
+      id: response.id,
+      originalAmount: Number(response.originalAmount),
+      paidAmount: Number(response.paidAmount),
+      outstandingBalance: Number(response.outstandingBalance),
+      status: response.status,
     }
   },
 
@@ -108,9 +131,9 @@ export const SaleMapper = {
     }
   },
 
-  toRequest(data: CreateCashSaleData): BackendCreateCashSaleRequest {
+  toRequest(data: CreateSaleData): BackendCreateSaleRequest {
     return {
-      saleType: 'CASH',
+      saleType: data.saleType,
       customerId: data.customerId,
       cashReceived: data.cashReceived,
       items: data.items.map((item) => ({

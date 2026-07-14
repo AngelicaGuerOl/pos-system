@@ -4,6 +4,14 @@ export type SaleType = 'CASH' | 'CREDIT'
 
 export type SaleStatus = 'COMPLETED' | 'CANCELLED'
 
+export type SaleReceivable = {
+  id: number
+  originalAmount: number
+  paidAmount: number
+  outstandingBalance: number
+  status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED'
+}
+
 export type SaleItem = {
   id: number
   productId: number
@@ -25,10 +33,11 @@ export type Sale = {
   saleType: SaleType
   status: SaleStatus
   total: number
-  cashReceived: number
-  changeAmount: number
+  cashReceived: number | null
+  changeAmount: number | null
   createdAt: string
   cancelledAt?: string | null
+  receivable: SaleReceivable | null
   items: SaleItem[]
 }
 
@@ -43,6 +52,7 @@ export type SaleSummary = {
   status: SaleStatus
   total: number
   totalItems: number
+  receivable: SaleReceivable | null
 }
 
 export type SaleHistoryFilters = {
@@ -59,16 +69,16 @@ export type SaleHistoryFilters = {
   sort?: string
 }
 
-export type CreateCashSaleItemData = {
+export type CreateSaleItemData = {
   productId: number
   quantity: number
 }
 
-export type CreateCashSaleData = {
-  saleType: 'CASH'
+export type CreateSaleData = {
+  saleType: SaleType
   customerId: number | null
-  cashReceived: number
-  items: CreateCashSaleItemData[]
+  cashReceived: number | null
+  items: CreateSaleItemData[]
 }
 
 export const SALE_TYPE_LABELS: Record<SaleType, string> = {

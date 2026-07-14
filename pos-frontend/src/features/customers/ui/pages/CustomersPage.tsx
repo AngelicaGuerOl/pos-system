@@ -19,6 +19,9 @@ import { ConfirmDialog } from '../../../../shared/ui/components/ConfirmDialog'
 import { DataGridShell } from '../../../../shared/ui/components/DataGridShell'
 import { EmptyState } from '../../../../shared/ui/components/EmptyState'
 import { PageHeader } from '../../../../shared/ui/components/PageHeader'
+import { CustomerReceivablesDrawer } from '../../../receivables/ui/components/CustomerReceivablesDrawer'
+import { ReceivableDetailDrawer } from '../../../receivables/ui/components/ReceivableDetailDrawer'
+import { useReceivableDetails } from '../../../receivables/ui/hooks/useReceivableDetails'
 import type { Customer, CustomerMutation } from '../../domain/entities/Customer'
 import { CustomerModal } from '../components/CustomerModal'
 import { CustomersGrid } from '../components/CustomersGrid'
@@ -38,6 +41,8 @@ export const CustomersPage = () => {
   const canDeactivate = user?.role === 'ADMIN'
   const [modal, setModal] = useState<ModalState>({ customer: null, mode: 'create', open: false })
   const [customerToDeactivate, setCustomerToDeactivate] = useState<Customer | null>(null)
+  const [customerForReceivables, setCustomerForReceivables] = useState<Customer | null>(null)
+  const [customerReceivablesRefreshKey, setCustomerReceivablesRefreshKey] = useState(0)
   const [message, setMessage] = useState<{ text: string; severity: AlertColor } | null>(null)
   const {
     customers,
@@ -55,6 +60,7 @@ export const CustomersPage = () => {
   const createCustomer = useCreateCustomer()
   const updateCustomer = useUpdateCustomer()
   const deactivateCustomer = useDeactivateCustomer()
+  const receivableDetails = useReceivableDetails()
 
   const mutationError = useMemo(
     () => createCustomer.error ?? updateCustomer.error ?? deactivateCustomer.error,
@@ -174,6 +180,7 @@ export const CustomersPage = () => {
                 loading={loading}
                 onDeactivate={setCustomerToDeactivate}
                 onEdit={(customer) => setModal({ customer, mode: 'edit', open: true })}
+                onViewReceivables={setCustomerForReceivables}
               />
 
               <TablePagination
@@ -200,6 +207,26 @@ export const CustomersPage = () => {
         onSubmit={handleSubmit}
         open={modal.open}
         serverErrors={mutationError?.validationErrors}
+      />
+
+      <CustomerReceivablesDrawer
+        customer={customerForReceivables}
+        onClose={() => setCustomerForReceivables(null)}
+        onViewDetails={(receivableId) => void receivableDetails.openDetails(receivableId)}
+        open={Boolean(customerForReceivables)}
+        refreshKey={customerReceivablesRefreshKey}
+      />
+
+      <ReceivableDetailDrawer
+        errorMessage={receivableDetails.error?.message}
+        loading={receivableDetails.loading}
+        onClose={receivableDetails.closeDetails}
+        onPaymentRegistered={async () => {
+          await receivableDetails.refreshDetails()
+          setCustomerReceivablesRefreshKey((current) => current + 1)
+        }}
+        open={receivableDetails.open}
+        receivable={receivableDetails.receivable}
       />
 
       <ConfirmDialog

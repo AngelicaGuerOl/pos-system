@@ -18,6 +18,7 @@ import {
   type Sale,
   type SaleItem,
 } from '../../domain/entities/Sale'
+import { RECEIVABLE_STATUS_LABELS } from '../../../receivables'
 
 type SaleDetailDrawerProps = {
   errorMessage?: string
@@ -137,17 +138,64 @@ export const SaleDetailDrawer = ({
 
               <Divider />
 
-              <Box
-                sx={{
-                  display: 'grid',
-                  gap: 2,
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
-                }}
-              >
-                <DetailRow label="Total" value={formatCurrency(sale.total)} />
-                <DetailRow label="Efectivo recibido" value={formatCurrency(sale.cashReceived)} />
-                <DetailRow label="Cambio" value={formatCurrency(sale.changeAmount)} />
-              </Box>
+              {sale.saleType === 'CASH' ? (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gap: 2,
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+                  }}
+                >
+                  <DetailRow label="Total" value={formatCurrency(sale.total)} />
+                  <DetailRow label="Efectivo recibido" value={formatCurrency(sale.cashReceived ?? 0)} />
+                  <DetailRow label="Cambio" value={formatCurrency(sale.changeAmount ?? 0)} />
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gap: 2,
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                  }}
+                >
+                  <DetailRow label="Total" value={formatCurrency(sale.total)} />
+                  <DetailRow label="Cliente" value={sale.customerFullName || '-'} />
+                </Box>
+              )}
+
+              {sale.receivable ? (
+                <>
+                  <Divider />
+                  <Stack spacing={1.5}>
+                    <Typography sx={{ fontWeight: 900 }}>Cuenta por cobrar</Typography>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gap: 2,
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                      }}
+                    >
+                      <DetailRow label="Folio de cuenta" value={`#${sale.receivable.id}`} />
+                      <DetailRow
+                        label="Estado"
+                        value={RECEIVABLE_STATUS_LABELS[sale.receivable.status]}
+                      />
+                      <DetailRow
+                        label="Monto original"
+                        value={formatCurrency(sale.receivable.originalAmount)}
+                      />
+                      <DetailRow
+                        label="Monto pagado"
+                        value={formatCurrency(sale.receivable.paidAmount)}
+                      />
+                      <DetailRow
+                        label="Saldo pendiente"
+                        value={formatCurrency(sale.receivable.outstandingBalance)}
+                      />
+                    </Box>
+                  </Stack>
+                </>
+              ) : null}
 
               <Divider />
 

@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import type { PageResponse } from '../../../shared/types/PageResponse'
-import type { CreateCashSaleData, Sale, SaleHistoryFilters, SaleSummary } from '../domain/entities/Sale'
+import type { CreateSaleData, Sale, SaleHistoryFilters, SaleSummary } from '../domain/entities/Sale'
 import type { SaleRepository } from '../domain/repositories/SaleRepository'
 import {
   SaleMapper,
@@ -15,7 +15,7 @@ export class SaleRepositoryImpl implements SaleRepository {
     this.client = client
   }
 
-  async createCashSale(data: CreateCashSaleData): Promise<Sale> {
+  async createSale(data: CreateSaleData): Promise<Sale> {
     const response = await this.client.post<BackendSaleResponse>(
       '/sales',
       SaleMapper.toRequest(data),

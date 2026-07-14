@@ -1,5 +1,6 @@
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
 import { Box, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { AllCommunityModule, ModuleRegistry, type ColDef } from 'ag-grid-community'
 import { AgGridReact } from 'ag-grid-react'
@@ -17,6 +18,7 @@ type CustomersGridProps = {
   loading: boolean
   onDeactivate: (customer: Customer) => void
   onEdit: (customer: Customer) => void
+  onViewReceivables: (customer: Customer) => void
 }
 
 const getDisplayName = (customer: Customer): string => {
@@ -30,6 +32,7 @@ export const CustomersGrid = ({
   loading,
   onDeactivate,
   onEdit,
+  onViewReceivables,
 }: CustomersGridProps) => {
   const columnDefs = useMemo<ColDef<Customer>[]>(
     () => [
@@ -93,6 +96,16 @@ export const CustomersGrid = ({
                   </IconButton>
                 </Tooltip>
               ) : null}
+              <Tooltip title="Ver cuentas por cobrar">
+                <IconButton
+                  color="info"
+                  onClick={() => onViewReceivables(data)}
+                  size="small"
+                  sx={{ bgcolor: 'info.50' }}
+                >
+                  <RequestQuoteRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
               {canDeactivate ? (
                 <Tooltip title="Desactivar">
                   <span>
@@ -113,7 +126,7 @@ export const CustomersGrid = ({
         },
       },
     ],
-    [canCreateOrEdit, canDeactivate, onDeactivate, onEdit],
+    [canCreateOrEdit, canDeactivate, onDeactivate, onEdit, onViewReceivables],
   )
 
   return (

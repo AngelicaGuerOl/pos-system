@@ -1,11 +1,12 @@
 export { SalesHistoryPage } from './ui/pages/SalesHistoryPage'
 export { SalesPage } from './ui/pages/SalesPage'
 export type {
-  CreateCashSaleData,
-  CreateCashSaleItemData,
+  CreateSaleData,
+  CreateSaleItemData,
   Sale,
   SaleHistoryFilters,
   SaleItem,
+  SaleReceivable,
   SaleStatus,
   SaleSummary,
   SaleType,

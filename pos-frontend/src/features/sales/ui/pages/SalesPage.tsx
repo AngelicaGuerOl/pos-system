@@ -18,12 +18,15 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth'
 import { useCashSession } from '../../../cash/session'
 import type { Product } from '../../../catalog/products'
+import type { Customer } from '../../../customers'
+import { ReceivableDetailDrawer } from '../../../receivables/ui/components/ReceivableDetailDrawer'
+import { useReceivableDetails } from '../../../receivables/ui/hooks/useReceivableDetails'
 import { ROUTE_PATHS } from '../../../../shared/routes/routePaths'
 import { ConfirmDialog } from '../../../../shared/ui/components/ConfirmDialog'
 import { DataGridShell } from '../../../../shared/ui/components/DataGridShell'
 import { EmptyState } from '../../../../shared/ui/components/EmptyState'
 import { formatCurrency, formatNumber } from '../../../../shared/utils/formatters'
-import type { Sale } from '../../domain/entities/Sale'
+import type { Sale, SaleType } from '../../domain/entities/Sale'
 import {
   BarcodeScannerInput,
   type BarcodeScannerInputHandle,
@@ -32,7 +35,7 @@ import { CashCheckoutDialog } from '../components/CashCheckoutDialog'
 import { ProductSearchDialog } from '../components/ProductSearchDialog'
 import { SaleCartGrid } from '../components/SaleCartGrid'
 import { SaleSuccessDialog } from '../components/SaleSuccessDialog'
-import { useCreateCashSale } from '../hooks/useCreateCashSale'
+import { useCreateSale } from '../hooks/useCreateSale'
 import { useProductLookup } from '../hooks/useProductLookup'
 import { useSaleCart } from '../hooks/useSaleCart'
 
@@ -61,7 +64,8 @@ export const SalesPage = () => {
   const scannerRef = useRef<BarcodeScannerInputHandle | null>(null)
   const cart = useSaleCart()
   const productLookup = useProductLookup()
-  const createSale = useCreateCashSale()
+  const createSale = useCreateSale()
+  const receivableDetails = useReceivableDetails()
   const [searchOpen, setSearchOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [clearCartOpen, setClearCartOpen] = useState(false)
@@ -168,11 +172,15 @@ export const SalesPage = () => {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [checkoutOpen, createSale.loading, lastSale, openCheckout, searchOpen])
 
-  const handleConfirmSale = async (cashReceived: number) => {
-    const sale = await createSale.createCashSale({
-      saleType: 'CASH',
-      customerId: null,
-      cashReceived,
+  const handleConfirmSale = async (values: {
+    cashReceived: number | null
+    customer: Customer | null
+    saleType: SaleType
+  }) => {
+    const sale = await createSale.createSale({
+      saleType: values.saleType,
+      customerId: values.customer?.id ?? null,
+      cashReceived: values.cashReceived,
       items: cart.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -369,8 +377,20 @@ export const SalesPage = () => {
           setLastSale(null)
           scannerRef.current?.focus()
         }}
+        onViewReceivable={(receivableId) => void receivableDetails.openDetails(receivableId)}
         open={Boolean(lastSale)}
         sale={lastSale}
+      />
+
+      <ReceivableDetailDrawer
+        errorMessage={receivableDetails.error?.message}
+        loading={receivableDetails.loading}
+        onClose={receivableDetails.closeDetails}
+        onPaymentRegistered={async () => {
+          await receivableDetails.refreshDetails()
+        }}
+        open={receivableDetails.open}
+        receivable={receivableDetails.receivable}
       />
 
       <ConfirmDialog
