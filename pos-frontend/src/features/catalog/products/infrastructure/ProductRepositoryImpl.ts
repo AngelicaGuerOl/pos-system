@@ -17,9 +17,9 @@ export class ProductRepositoryImpl implements ProductRepository {
         search: filters.search || undefined,
         categoryId: filters.categoryId || undefined,
         lowStock: filters.lowStock || undefined,
-        page: 0,
-        size: 50,
-        sort: 'name,asc',
+        page: filters.page ?? 0,
+        size: filters.size ?? 50,
+        sort: filters.sort ?? 'name,asc',
       },
     })
 

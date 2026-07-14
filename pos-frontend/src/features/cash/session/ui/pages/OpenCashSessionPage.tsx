@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../../../auth'
 import { ROUTE_PATHS } from '../../../../../shared/routes/routePaths'
 import { PageHeader } from '../../../../../shared/ui/components/PageHeader'
@@ -23,6 +24,7 @@ import { useCashSession } from '../hooks/useCashSession'
 
 export const OpenCashSessionPage = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const { currentSession, error, loading, openCashSession } = useCashSession()
 
@@ -30,7 +32,17 @@ export const OpenCashSessionPage = () => {
     const session = await openCashSession(values)
 
     if (session) {
-      navigate(ROUTE_PATHS.cashMovements, { replace: true })
+      const fromPath = typeof location.state === 'object'
+        && location.state !== null
+        && 'from' in location.state
+        && typeof location.state.from === 'object'
+        && location.state.from !== null
+        && 'pathname' in location.state.from
+        && typeof location.state.from.pathname === 'string'
+        ? location.state.from.pathname
+        : ROUTE_PATHS.cashMovements
+
+      navigate(fromPath, { replace: true })
     }
   }
 

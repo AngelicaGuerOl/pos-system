@@ -21,6 +21,9 @@ export type ProductFilters = {
   search?: string
   categoryId?: number | null
   lowStock?: boolean
+  page?: number
+  size?: number
+  sort?: string
 }
 
 export type ProductMutation = {
