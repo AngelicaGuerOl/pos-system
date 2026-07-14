@@ -1,8 +1,10 @@
 package com.angelica.pos.sale.controller;
 
+import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleItemRequest;
 import com.angelica.pos.sale.dto.SaleRequest;
 import com.angelica.pos.sale.dto.SaleResponse;
+import com.angelica.pos.sale.dto.SaleSummaryResponse;
 import com.angelica.pos.sale.entity.SaleStatus;
 import com.angelica.pos.sale.entity.SaleType;
 import com.angelica.pos.sale.service.SaleService;
@@ -21,6 +23,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -68,11 +71,11 @@ class SaleControllerTest {
     void findByIdReturnsSale() {
         User user = buildUser(Role.ADMIN);
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(user);
-        SaleResponse response = buildResponse(15L);
+        SaleDetailResponse response = buildDetailResponse(15L);
 
         when(saleService.findById(15L, authenticatedUser)).thenReturn(response);
 
-        ResponseEntity<SaleResponse> result = saleController.findById(15L, authenticatedUser);
+        ResponseEntity<SaleDetailResponse> result = saleController.findById(15L, authenticatedUser);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(response, result.getBody());
@@ -83,11 +86,11 @@ class SaleControllerTest {
         User user = buildUser(Role.CASHIER);
         AuthenticatedUser authenticatedUser = new AuthenticatedUser(user);
         PageRequest pageable = PageRequest.of(0, 10);
-        PageResponse<SaleResponse> page = pageResponse();
+        PageResponse<SaleSummaryResponse> page = pageResponse();
 
         when(saleService.findCurrentSession(authenticatedUser, pageable)).thenReturn(page);
 
-        ResponseEntity<PageResponse<SaleResponse>> result =
+        ResponseEntity<PageResponse<SaleSummaryResponse>> result =
                 saleController.findCurrentSession(authenticatedUser, pageable);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -97,12 +100,13 @@ class SaleControllerTest {
     @Test
     void findAllReturnsPage() {
         PageRequest pageable = PageRequest.of(0, 10);
-        PageResponse<SaleResponse> page = pageResponse();
+        PageResponse<SaleSummaryResponse> page = pageResponse();
 
-        when(saleService.findAll(15L, null, null, SaleStatus.COMPLETED, null, null, pageable)).thenReturn(page);
+        when(saleService.findAll(15L, null, null, SaleStatus.COMPLETED, SaleType.CASH, null, null, pageable))
+                .thenReturn(page);
 
-        ResponseEntity<PageResponse<SaleResponse>> result =
-                saleController.findAll(15L, null, null, null, SaleStatus.COMPLETED, null, null, pageable);
+        ResponseEntity<PageResponse<SaleSummaryResponse>> result =
+                saleController.findAll(15L, null, null, null, SaleStatus.COMPLETED, SaleType.CASH, null, null, pageable);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(page, result.getBody());
@@ -128,9 +132,17 @@ class SaleControllerTest {
         return response;
     }
 
-    private PageResponse<SaleResponse> pageResponse() {
-        return PageResponse.<SaleResponse>builder()
-                .content(List.of(buildResponse(15L)))
+    private SaleDetailResponse buildDetailResponse(Long id) {
+        SaleDetailResponse response = new SaleDetailResponse();
+        response.setId(id);
+        response.setSaleType(SaleType.CASH);
+        response.setStatus(SaleStatus.COMPLETED);
+        return response;
+    }
+
+    private PageResponse<SaleSummaryResponse> pageResponse() {
+        return PageResponse.<SaleSummaryResponse>builder()
+                .content(List.of(buildSummaryResponse(15L)))
                 .page(0)
                 .size(10)
                 .totalElements(1)
@@ -138,6 +150,21 @@ class SaleControllerTest {
                 .first(true)
                 .last(true)
                 .build();
+    }
+
+    private SaleSummaryResponse buildSummaryResponse(Long id) {
+        return new SaleSummaryResponse(
+                id,
+                OffsetDateTime.parse("2026-07-13T10:00:00Z"),
+                5L,
+                "user",
+                null,
+                "Público general",
+                SaleType.CASH,
+                SaleStatus.COMPLETED,
+                new BigDecimal("100.00"),
+                1L
+        );
     }
 
     private User buildUser(Role role) {

@@ -24,9 +24,11 @@ import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.mapper.InventoryMovementMapper;
 import com.angelica.pos.inventory.movement.repository.InventoryMovementRepository;
 import com.angelica.pos.inventory.movement.service.InventoryMovementServiceImpl;
+import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleItemRequest;
 import com.angelica.pos.sale.dto.SaleRequest;
 import com.angelica.pos.sale.dto.SaleResponse;
+import com.angelica.pos.sale.dto.SaleSummaryResponse;
 import com.angelica.pos.sale.entity.Sale;
 import com.angelica.pos.sale.entity.SaleItem;
 import com.angelica.pos.sale.entity.SaleStatus;
@@ -46,9 +48,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -297,12 +299,16 @@ class SaleServiceImplTest {
     void cashierCanFindOwnSaleButNotOtherCashiersSale() {
         User cashier = buildUser(5L, Role.CASHIER);
         Sale sale = Sale.builder().id(20L).createdBy(cashier).build();
+        SaleDetailResponse detailResponse = new SaleDetailResponse();
+        when(userRepository.findByIdAndActiveTrue(cashier.getId())).thenReturn(Optional.of(cashier));
         when(saleRepository.findByIdWithDetails(20L)).thenReturn(Optional.of(sale));
-        when(saleMapper.toResponse(sale)).thenReturn(new SaleResponse());
+        when(saleMapper.toDetailResponse(sale)).thenReturn(detailResponse);
 
-        saleService.findById(20L, new AuthenticatedUser(cashier));
+        SaleDetailResponse result = saleService.findById(20L, new AuthenticatedUser(cashier));
 
+        assertEquals(detailResponse, result);
         User otherCashier = buildUser(6L, Role.CASHIER);
+        when(userRepository.findByIdAndActiveTrue(otherCashier.getId())).thenReturn(Optional.of(otherCashier));
         assertThrows(
                 SaleAccessDeniedException.class,
                 () -> saleService.findById(20L, new AuthenticatedUser(otherCashier))
@@ -315,24 +321,170 @@ class SaleServiceImplTest {
         User cashier = buildUser(5L, Role.CASHIER);
         Sale sale = Sale.builder().id(20L).createdBy(cashier).build();
         PageRequest pageable = PageRequest.of(0, 10);
+        SaleDetailResponse detailResponse = new SaleDetailResponse();
+        SaleSummaryResponse summary = summary(20L);
+        when(userRepository.findByIdAndActiveTrue(admin.getId())).thenReturn(Optional.of(admin));
         when(saleRepository.findByIdWithDetails(20L)).thenReturn(Optional.of(sale));
-        when(saleMapper.toResponse(sale)).thenReturn(new SaleResponse());
-        when(saleRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Sale>>any(), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(sale), pageable, 1));
-        when(saleMapper.toResponseList(List.of(sale))).thenReturn(List.of(new SaleResponse()));
+        when(saleMapper.toDetailResponse(sale)).thenReturn(detailResponse);
+        when(saleRepository.findSummaries(null, null, null, null, null, null, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(summary), pageable, 1));
 
         saleService.findById(20L, new AuthenticatedUser(admin));
-        PageResponse<SaleResponse> result = saleService.findAll(null, null, null, null, null, null, pageable);
+        PageResponse<SaleSummaryResponse> result =
+                saleService.findAll(null, null, null, null, null, null, null, pageable);
 
         assertEquals(1, result.getTotalElements());
+        assertEquals(summary, result.getContent().get(0));
     }
 
     @Test
     void missingSaleReturnsNotFound() {
         User user = buildUser(5L, Role.CASHIER);
+        when(userRepository.findByIdAndActiveTrue(user.getId())).thenReturn(Optional.of(user));
         when(saleRepository.findByIdWithDetails(20L)).thenReturn(Optional.empty());
 
         assertThrows(SaleNotFoundException.class, () -> saleService.findById(20L, new AuthenticatedUser(user)));
+    }
+
+    @Test
+    void cashierFindsCurrentOpenSessionSales() {
+        User cashier = buildUser(5L, Role.CASHIER);
+        CashSession cashSession = buildCashSession(11L, cashier);
+        PageRequest pageable = PageRequest.of(0, 10);
+        SaleSummaryResponse summary = summary(30L);
+        when(userRepository.findByIdAndActiveTrue(cashier.getId())).thenReturn(Optional.of(cashier));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(cashier.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.of(cashSession));
+        when(saleRepository.findSummariesByCashSessionId(cashSession.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(summary), pageable, 1));
+
+        PageResponse<SaleSummaryResponse> result =
+                saleService.findCurrentSession(new AuthenticatedUser(cashier), pageable);
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
+        assertEquals(summary, result.getContent().get(0));
+    }
+
+    @Test
+    void currentSessionWithoutOpenCashSessionIsRejected() {
+        User cashier = buildUser(5L, Role.CASHIER);
+        PageRequest pageable = PageRequest.of(0, 10);
+        when(userRepository.findByIdAndActiveTrue(cashier.getId())).thenReturn(Optional.of(cashier));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(cashier.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                OpenCashSessionRequiredException.class,
+                () -> saleService.findCurrentSession(new AuthenticatedUser(cashier), pageable)
+        );
+    }
+
+    @Test
+    void currentSessionUsesOnlyAuthenticatedUsersOpenSession() {
+        User cashier = buildUser(5L, Role.CASHIER);
+        CashSession cashSession = buildCashSession(11L, cashier);
+        PageRequest pageable = PageRequest.of(0, 10);
+        when(userRepository.findByIdAndActiveTrue(cashier.getId())).thenReturn(Optional.of(cashier));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(cashier.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.of(cashSession));
+        when(saleRepository.findSummariesByCashSessionId(cashSession.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+        saleService.findCurrentSession(new AuthenticatedUser(cashier), pageable);
+
+        verify(saleRepository).findSummariesByCashSessionId(cashSession.getId(), pageable);
+        verify(saleRepository, never()).findSummariesByCashSessionId(eq(99L), any());
+    }
+
+    @Test
+    void globalHistoryPassesFiltersToRepository() {
+        PageRequest pageable = PageRequest.of(0, 10);
+        OffsetDateTime from = OffsetDateTime.parse("2026-07-01T00:00:00Z");
+        OffsetDateTime to = OffsetDateTime.parse("2026-07-31T23:59:59Z");
+        SaleSummaryResponse summary = summary(15L);
+        when(saleRepository.findSummaries(
+                15L,
+                8L,
+                5L,
+                SaleStatus.COMPLETED,
+                SaleType.CASH,
+                from,
+                to,
+                pageable
+        )).thenReturn(new PageImpl<>(List.of(summary), pageable, 1));
+
+        PageResponse<SaleSummaryResponse> result = saleService.findAll(
+                15L,
+                8L,
+                5L,
+                SaleStatus.COMPLETED,
+                SaleType.CASH,
+                from,
+                to,
+                pageable
+        );
+
+        assertEquals(1, result.getTotalElements());
+        assertEquals(summary, result.getContent().get(0));
+    }
+
+    @Test
+    void invalidDateRangeIsRejected() {
+        PageRequest pageable = PageRequest.of(0, 10);
+        OffsetDateTime from = OffsetDateTime.parse("2026-08-01T00:00:00Z");
+        OffsetDateTime to = OffsetDateTime.parse("2026-07-01T00:00:00Z");
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> saleService.findAll(null, null, null, null, null, from, to, pageable)
+        );
+    }
+
+    @Test
+    void pageSizeGreaterThanFiftyIsRejected() {
+        User cashier = buildUser(5L, Role.CASHIER);
+        PageRequest pageable = PageRequest.of(0, 51);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> saleService.findCurrentSession(new AuthenticatedUser(cashier), pageable)
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> saleService.findAll(null, null, null, null, null, null, null, pageable)
+        );
+    }
+
+    @Test
+    void detailUsesHistoricalSaleItemSnapshots() {
+        User cashier = buildUser(5L, Role.CASHIER);
+        Product product = buildProduct(1L, "Current name", "10.00", "80.00", "45.00", true);
+        Sale sale = Sale.builder().id(20L).createdBy(cashier).build();
+        SaleItem item = SaleItem.builder()
+                .id(100L)
+                .sale(sale)
+                .product(product)
+                .productName("Historical name")
+                .productBarcode("000123")
+                .productUnit(ProductUnit.PIECE)
+                .quantity(new BigDecimal("2.00"))
+                .unitPrice(new BigDecimal("70.00"))
+                .lineTotal(new BigDecimal("140.00"))
+                .build();
+        sale.setItems(List.of(item));
+        SaleDetailResponse detailResponse = new SaleDetailResponse();
+        when(userRepository.findByIdAndActiveTrue(cashier.getId())).thenReturn(Optional.of(cashier));
+        when(saleRepository.findByIdWithDetails(20L)).thenReturn(Optional.of(sale));
+        when(saleMapper.toDetailResponse(sale)).thenReturn(detailResponse);
+
+        SaleDetailResponse result = saleService.findById(20L, new AuthenticatedUser(cashier));
+
+        assertEquals(detailResponse, result);
+        verify(saleMapper).toDetailResponse(org.mockito.ArgumentMatchers.argThat(mappedSale ->
+                mappedSale.getItems().get(0).getProductName().equals("Historical name")
+                        && mappedSale.getItems().get(0).getUnitPrice().compareTo(new BigDecimal("70.00")) == 0
+        ));
     }
 
     private void mockSuccessfulBase(User user, Product product) {
@@ -411,5 +563,20 @@ class SaleServiceImplTest {
                 .active(true)
                 .mustChangePassword(false)
                 .build();
+    }
+
+    private SaleSummaryResponse summary(Long id) {
+        return new SaleSummaryResponse(
+                id,
+                OffsetDateTime.parse("2026-07-13T10:00:00Z"),
+                5L,
+                "user5",
+                null,
+                "Público general",
+                SaleType.CASH,
+                SaleStatus.COMPLETED,
+                new BigDecimal("100.00"),
+                1L
+        );
     }
 }

@@ -13,9 +13,11 @@ import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.customer.repository.CustomerRepository;
 import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.service.InventoryMovementService;
+import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleItemRequest;
 import com.angelica.pos.sale.dto.SaleRequest;
 import com.angelica.pos.sale.dto.SaleResponse;
+import com.angelica.pos.sale.dto.SaleSummaryResponse;
 import com.angelica.pos.sale.entity.Sale;
 import com.angelica.pos.sale.entity.SaleItem;
 import com.angelica.pos.sale.entity.SaleStatus;
@@ -32,19 +34,14 @@ import com.angelica.pos.user.entity.Role;
 import com.angelica.pos.user.entity.User;
 import com.angelica.pos.user.exception.UserNotFoundException;
 import com.angelica.pos.user.repository.UserRepository;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -140,38 +137,41 @@ public class SaleServiceImpl implements SaleService {
 
     @Override
     @Transactional(readOnly = true)
-    public SaleResponse findById(Long id, AuthenticatedUser authenticatedUser) {
+    public SaleDetailResponse findById(Long id, AuthenticatedUser authenticatedUser) {
+        User authenticated = findActiveUser(authenticatedUser.getId());
         Sale sale = saleRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new SaleNotFoundException(id));
 
-        if (authenticatedUser.getRole() != Role.ADMIN
-                && !sale.getCreatedBy().getId().equals(authenticatedUser.getId())) {
+        if (authenticated.getRole() != Role.ADMIN
+                && !sale.getCreatedBy().getId().equals(authenticated.getId())) {
             throw new SaleAccessDeniedException();
         }
 
-        return saleMapper.toResponse(sale);
+        return saleMapper.toDetailResponse(sale);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<SaleResponse> findCurrentSession(AuthenticatedUser authenticatedUser, Pageable pageable) {
+    public PageResponse<SaleSummaryResponse> findCurrentSession(AuthenticatedUser authenticatedUser, Pageable pageable) {
         validatePageSize(pageable);
+        User user = findActiveUser(authenticatedUser.getId());
         CashSession cashSession = cashSessionRepository.findByOpenedByIdAndStatus(
-                        authenticatedUser.getId(),
+                        user.getId(),
                         CashSessionStatus.OPEN
                 )
                 .orElseThrow(OpenCashSessionRequiredException::new);
 
-        return toPageResponse(saleRepository.findByCashSessionId(cashSession.getId(), pageable));
+        return toSummaryPageResponse(saleRepository.findSummariesByCashSessionId(cashSession.getId(), pageable));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<SaleResponse> findAll(
+    public PageResponse<SaleSummaryResponse> findAll(
             Long id,
             Long customerId,
             Long createdByUserId,
             SaleStatus status,
+            SaleType saleType,
             OffsetDateTime from,
             OffsetDateTime to,
             Pageable pageable
@@ -179,14 +179,16 @@ public class SaleServiceImpl implements SaleService {
         validatePageSize(pageable);
         validateDateRange(from, to);
 
-        return toPageResponse(saleRepository.findAll(buildSpecification(
+        return toSummaryPageResponse(saleRepository.findSummaries(
                 id,
                 customerId,
                 createdByUserId,
                 status,
+                saleType,
                 from,
-                to
-        ), pageable));
+                to,
+                pageable
+        ));
     }
 
     private void validateCreateRequest(SaleRequest request) {
@@ -283,56 +285,6 @@ public class SaleServiceImpl implements SaleService {
         }
     }
 
-    private Specification<Sale> buildSpecification(
-            Long id,
-            Long customerId,
-            Long createdByUserId,
-            SaleStatus status,
-            OffsetDateTime from,
-            OffsetDateTime to
-    ) {
-        return (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (id != null) {
-                predicates.add(criteriaBuilder.equal(root.get("id"), id));
-            }
-            if (customerId != null) {
-                Join<Sale, Customer> customerJoin = root.join("customer", JoinType.INNER);
-                predicates.add(criteriaBuilder.equal(customerJoin.get("id"), customerId));
-            }
-            if (createdByUserId != null) {
-                Join<Sale, User> createdByJoin = root.join("createdBy", JoinType.INNER);
-                predicates.add(criteriaBuilder.equal(createdByJoin.get("id"), createdByUserId));
-            }
-            if (status != null) {
-                predicates.add(criteriaBuilder.equal(root.get("status"), status));
-            }
-            if (from != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), from));
-            }
-            if (to != null) {
-                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), to));
-            }
-
-            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
-        };
-    }
-
-    private PageResponse<SaleResponse> toPageResponse(Page<Sale> salesPage) {
-        List<SaleResponse> content = saleMapper.toResponseList(salesPage.getContent());
-
-        return PageResponse.<SaleResponse>builder()
-                .content(content)
-                .page(salesPage.getNumber())
-                .size(salesPage.getSize())
-                .totalElements(salesPage.getTotalElements())
-                .totalPages(salesPage.getTotalPages())
-                .first(salesPage.isFirst())
-                .last(salesPage.isLast())
-                .build();
-    }
-
     private void validatePageSize(Pageable pageable) {
         if (pageable.getPageSize() > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("El tamano de pagina no debe superar " + MAX_PAGE_SIZE + " registros");
@@ -348,5 +300,22 @@ public class SaleServiceImpl implements SaleService {
     private int getIntegerDigits(BigDecimal amount) {
         BigDecimal normalizedAmount = amount.stripTrailingZeros();
         return Math.max(normalizedAmount.precision() - normalizedAmount.scale(), 1);
+    }
+
+    private User findActiveUser(Long userId) {
+        return userRepository.findByIdAndActiveTrue(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+    }
+
+    private PageResponse<SaleSummaryResponse> toSummaryPageResponse(Page<SaleSummaryResponse> salesPage) {
+        return PageResponse.<SaleSummaryResponse>builder()
+                .content(salesPage.getContent())
+                .page(salesPage.getNumber())
+                .size(salesPage.getSize())
+                .totalElements(salesPage.getTotalElements())
+                .totalPages(salesPage.getTotalPages())
+                .first(salesPage.isFirst())
+                .last(salesPage.isLast())
+                .build();
     }
 }

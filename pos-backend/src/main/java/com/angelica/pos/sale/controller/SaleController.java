@@ -1,8 +1,11 @@
 package com.angelica.pos.sale.controller;
 
+import com.angelica.pos.sale.dto.SaleDetailResponse;
 import com.angelica.pos.sale.dto.SaleRequest;
 import com.angelica.pos.sale.dto.SaleResponse;
+import com.angelica.pos.sale.dto.SaleSummaryResponse;
 import com.angelica.pos.sale.entity.SaleStatus;
+import com.angelica.pos.sale.entity.SaleType;
 import com.angelica.pos.sale.service.SaleService;
 import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.shared.response.PageResponse;
@@ -50,8 +53,16 @@ public class SaleController {
         return ResponseEntity.created(location).body(response);
     }
 
+    @GetMapping("/current-session")
+    public ResponseEntity<PageResponse<SaleSummaryResponse>> findCurrentSession(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(saleService.findCurrentSession(authenticatedUser, pageable));
+    }
+
     @GetMapping("/{id}")
-    public ResponseEntity<SaleResponse> findById(
+    public ResponseEntity<SaleDetailResponse> findById(
             @PathVariable
             @Positive(message = "Sale id must be positive")
             Long id,
@@ -60,16 +71,8 @@ public class SaleController {
         return ResponseEntity.ok(saleService.findById(id, authenticatedUser));
     }
 
-    @GetMapping("/current-session")
-    public ResponseEntity<PageResponse<SaleResponse>> findCurrentSession(
-            @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
-        return ResponseEntity.ok(saleService.findCurrentSession(authenticatedUser, pageable));
-    }
-
     @GetMapping
-    public ResponseEntity<PageResponse<SaleResponse>> findAll(
+    public ResponseEntity<PageResponse<SaleSummaryResponse>> findAll(
             @RequestParam(required = false)
             @Positive(message = "Sale id must be positive")
             Long id,
@@ -83,6 +86,7 @@ public class SaleController {
             @Positive(message = "Created by user id must be positive")
             Long createdByUserId,
             @RequestParam(required = false) SaleStatus status,
+            @RequestParam(required = false) SaleType saleType,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             OffsetDateTime from,
@@ -92,6 +96,15 @@ public class SaleController {
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Long effectiveId = id == null ? folio : id;
-        return ResponseEntity.ok(saleService.findAll(effectiveId, customerId, createdByUserId, status, from, to, pageable));
+        return ResponseEntity.ok(saleService.findAll(
+                effectiveId,
+                customerId,
+                createdByUserId,
+                status,
+                saleType,
+                from,
+                to,
+                pageable
+        ));
     }
 }
