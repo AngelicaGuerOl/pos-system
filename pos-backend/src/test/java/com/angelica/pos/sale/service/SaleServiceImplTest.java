@@ -43,6 +43,7 @@ import com.angelica.pos.sale.exception.SaleAccessDeniedException;
 import com.angelica.pos.sale.exception.SaleNotFoundException;
 import com.angelica.pos.sale.mapper.SaleMapper;
 import com.angelica.pos.sale.repository.SaleRepository;
+import com.angelica.pos.sale.returning.repository.SaleReturnRepository;
 import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.shared.response.PageResponse;
 import com.angelica.pos.user.entity.Role;
@@ -78,6 +79,7 @@ class SaleServiceImplTest {
     private InventoryMovementRepository inventoryMovementRepository;
     private CashMovementRepository cashMovementRepository;
     private ReceivableService receivableService;
+    private SaleReturnRepository saleReturnRepository;
     private SaleMapper saleMapper;
     private SaleServiceImpl saleService;
 
@@ -91,6 +93,7 @@ class SaleServiceImplTest {
         inventoryMovementRepository = mock(InventoryMovementRepository.class);
         cashMovementRepository = mock(CashMovementRepository.class);
         receivableService = mock(ReceivableService.class);
+        saleReturnRepository = mock(SaleReturnRepository.class);
         saleMapper = mock(SaleMapper.class);
 
         InventoryMovementServiceImpl inventoryMovementService = new InventoryMovementServiceImpl(
@@ -114,6 +117,7 @@ class SaleServiceImplTest {
                 inventoryMovementService,
                 cashMovementService,
                 receivableService,
+                saleReturnRepository,
                 saleMapper
         );
     }

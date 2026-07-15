@@ -20,9 +20,37 @@ public class ReceivableSummaryResponse {
     private Long customerId;
     private String customerFullName;
     private BigDecimal originalAmount;
+    private BigDecimal returnedAmount;
+    private BigDecimal adjustedAmount;
     private BigDecimal paidAmount;
     private BigDecimal outstandingBalance;
     private ReceivableStatus status;
     private OffsetDateTime createdAt;
     private OffsetDateTime paidAt;
+
+    public ReceivableSummaryResponse(
+            Long id,
+            Long saleId,
+            Long customerId,
+            String customerFullName,
+            BigDecimal originalAmount,
+            BigDecimal paidAmount,
+            BigDecimal outstandingBalance,
+            ReceivableStatus status,
+            OffsetDateTime createdAt,
+            OffsetDateTime paidAt
+    ) {
+        this.id = id;
+        this.saleId = saleId;
+        this.customerId = customerId;
+        this.customerFullName = customerFullName;
+        this.originalAmount = originalAmount;
+        this.returnedAmount = BigDecimal.ZERO;
+        this.adjustedAmount = originalAmount;
+        this.paidAmount = paidAmount;
+        this.outstandingBalance = outstandingBalance;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.paidAt = paidAt;
+    }
 }

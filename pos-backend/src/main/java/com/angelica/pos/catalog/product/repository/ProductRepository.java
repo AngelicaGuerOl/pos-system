@@ -40,6 +40,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             """)
     List<Product> findAllActiveByIdInForUpdate(@Param("ids") List<Long> ids);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM Product p
+            WHERE p.id IN :ids
+            ORDER BY p.id ASC
+            """)
+    List<Product> findAllByIdInForUpdate(@Param("ids") List<Long> ids);
+
     Optional<Product> findByBarcodeIgnoreCaseAndActiveTrue(String barcode);
 
     @EntityGraph(attributePaths = "category")

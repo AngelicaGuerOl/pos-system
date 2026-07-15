@@ -191,6 +191,52 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
     }
 
     @Override
+    @Transactional
+    public InventoryMovement registerSaleReturnMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long saleReturnItemId,
+            User user
+    ) {
+        validateStockMovement(
+                lockedProduct == null ? null : lockedProduct.getId(),
+                quantity,
+                "Devolucion de venta",
+                InventoryMovementDirection.IN,
+                InventoryMovementType.SALE_RETURN,
+                "SALE_RETURN_ITEM",
+                saleReturnItemId
+        );
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+
+        BigDecimal previousStock = lockedProduct.getCurrentStock();
+        BigDecimal newStock = calculateNewStock(
+                lockedProduct,
+                previousStock,
+                quantity,
+                InventoryMovementDirection.IN
+        );
+        lockedProduct.setCurrentStock(newStock);
+
+        InventoryMovement movement = InventoryMovement.builder()
+                .product(lockedProduct)
+                .createdBy(user)
+                .direction(InventoryMovementDirection.IN)
+                .type(InventoryMovementType.SALE_RETURN)
+                .quantity(quantity)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .description("Devolucion de venta")
+                .sourceType("SALE_RETURN_ITEM")
+                .sourceId(saleReturnItemId)
+                .build();
+
+        return inventoryMovementRepository.save(movement);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public InventoryMovementResponse findById(Long id) {
         InventoryMovement movement = inventoryMovementRepository.findByIdWithDetails(id)
@@ -378,7 +424,8 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
                 || (type == InventoryMovementType.MANUAL_ENTRY && direction == InventoryMovementDirection.IN)
                 || (type == InventoryMovementType.MANUAL_EXIT && direction == InventoryMovementDirection.OUT)
                 || (type == InventoryMovementType.SALE && direction == InventoryMovementDirection.OUT)
-                || (type == InventoryMovementType.RETURN && direction == InventoryMovementDirection.IN);
+                || (type == InventoryMovementType.RETURN && direction == InventoryMovementDirection.IN)
+                || (type == InventoryMovementType.SALE_RETURN && direction == InventoryMovementDirection.IN);
 
         if (!valid) {
             throw new IllegalArgumentException("Inventory movement type and direction are not compatible");

@@ -50,6 +50,13 @@ public interface InventoryMovementService {
             User user
     );
 
+    InventoryMovement registerSaleReturnMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long saleReturnItemId,
+            User user
+    );
+
     InventoryMovementResponse findById(Long id);
 
     PageResponse<InventoryMovementResponse> findAll(

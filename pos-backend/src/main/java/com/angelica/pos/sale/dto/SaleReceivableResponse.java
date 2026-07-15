@@ -16,6 +16,8 @@ public class SaleReceivableResponse {
 
     private Long id;
     private BigDecimal originalAmount;
+    private BigDecimal returnedAmount;
+    private BigDecimal adjustedAmount;
     private BigDecimal paidAmount;
     private BigDecimal outstandingBalance;
     private ReceivableStatus status;

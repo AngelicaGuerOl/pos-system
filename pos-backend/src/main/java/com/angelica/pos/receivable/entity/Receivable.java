@@ -56,6 +56,16 @@ public class Receivable {
 
     @NotNull
     @DecimalMin(value = "0.00")
+    @Column(name = "returned_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal returnedAmount;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
+    @Column(name = "adjusted_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal adjustedAmount;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
     @Column(name = "paid_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal paidAmount;
 
@@ -82,6 +92,12 @@ public class Receivable {
         }
         if (paidAmount == null) {
             paidAmount = BigDecimal.ZERO;
+        }
+        if (returnedAmount == null) {
+            returnedAmount = BigDecimal.ZERO;
+        }
+        if (adjustedAmount == null) {
+            adjustedAmount = originalAmount;
         }
     }
 }

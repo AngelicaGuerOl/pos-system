@@ -4,10 +4,12 @@ import com.angelica.pos.sale.dto.SaleSummaryResponse;
 import com.angelica.pos.sale.entity.Sale;
 import com.angelica.pos.sale.entity.SaleStatus;
 import com.angelica.pos.sale.entity.SaleType;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,15 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             """)
     Optional<Sale> findByIdWithDetails(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"cashSession", "createdBy", "customer", "items", "items.product"})
+    @Query("""
+            SELECT s
+            FROM Sale s
+            WHERE s.id = :id
+            """)
+    Optional<Sale> findByIdForReturnUpdate(@Param("id") Long id);
+
     @Query(
             value = """
                     SELECT new com.angelica.pos.sale.dto.SaleSummaryResponse(
@@ -39,6 +50,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                         COUNT(item.id),
                         receivable.id,
                         receivable.originalAmount,
+                        receivable.returnedAmount,
+                        receivable.adjustedAmount,
                         receivable.paidAmount,
                         receivable.outstandingBalance,
                         receivable.status
@@ -51,7 +64,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                     WHERE s.cashSession.id = :cashSessionId
                     GROUP BY s.id, s.createdAt, createdBy.id, createdBy.username, customer.id,
                              customer.firstName, customer.lastName, s.saleType, s.status, s.total,
-                             receivable.id, receivable.originalAmount, receivable.paidAmount,
+                             receivable.id, receivable.originalAmount, receivable.returnedAmount,
+                             receivable.adjustedAmount, receivable.paidAmount,
                              receivable.outstandingBalance, receivable.status
                     """,
             countQuery = """
@@ -80,6 +94,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                         COUNT(item.id),
                         receivable.id,
                         receivable.originalAmount,
+                        receivable.returnedAmount,
+                        receivable.adjustedAmount,
                         receivable.paidAmount,
                         receivable.outstandingBalance,
                         receivable.status
@@ -98,7 +114,8 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                       AND s.createdAt <= COALESCE(:to, s.createdAt)
                     GROUP BY s.id, s.createdAt, createdBy.id, createdBy.username, customer.id,
                              customer.firstName, customer.lastName, s.saleType, s.status, s.total,
-                             receivable.id, receivable.originalAmount, receivable.paidAmount,
+                             receivable.id, receivable.originalAmount, receivable.returnedAmount,
+                             receivable.adjustedAmount, receivable.paidAmount,
                              receivable.outstandingBalance, receivable.status
                     """,
             countQuery = """

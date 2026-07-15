@@ -92,7 +92,8 @@ public class Sale {
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SaleItem> items = new ArrayList<>();
 
-    @OneToOne(mappedBy = "sale", fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id", referencedColumnName = "sale_id", insertable = false, updatable = false)
     private Receivable receivable;
 
     public void addItem(SaleItem item) {

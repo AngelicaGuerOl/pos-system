@@ -26,6 +26,7 @@ public class SaleDetailResponse {
     private BigDecimal changeAmount;
     private OffsetDateTime createdAt;
     private OffsetDateTime cancelledAt;
+    private BigDecimal totalReturnedAmount;
     private SaleReceivableResponse receivable;
     private List<SaleItemResponse> items;
 }

@@ -70,6 +70,12 @@ public class SaleItem {
 
     @NotNull
     @DecimalMin(value = "0.00")
+    @Column(name = "returned_quantity", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal returnedQuantity = BigDecimal.ZERO;
+
+    @NotNull
+    @DecimalMin(value = "0.00")
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal unitPrice;
 

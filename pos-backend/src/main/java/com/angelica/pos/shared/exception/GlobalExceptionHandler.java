@@ -8,6 +8,7 @@ import com.angelica.pos.cash.movement.exception.OpenCashSessionRequiredException
 import com.angelica.pos.cash.session.exception.CashSessionAlreadyOpenException;
 import com.angelica.pos.cash.session.exception.CashSessionNotFoundException;
 import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
+import com.angelica.pos.customer.exception.CustomerHasPendingReceivablesException;
 import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.inventory.movement.exception.InsufficientStockException;
 import com.angelica.pos.inventory.movement.exception.InventoryMovementNotFoundException;
@@ -23,6 +24,13 @@ import com.angelica.pos.sale.exception.CreditSaleNotAvailableException;
 import com.angelica.pos.sale.exception.InsufficientCashReceivedException;
 import com.angelica.pos.sale.exception.SaleAccessDeniedException;
 import com.angelica.pos.sale.exception.SaleNotFoundException;
+import com.angelica.pos.sale.returning.exception.CreditSaleReceivableRequiredException;
+import com.angelica.pos.sale.returning.exception.DuplicateSaleReturnItemException;
+import com.angelica.pos.sale.returning.exception.SaleItemDoesNotBelongToSaleException;
+import com.angelica.pos.sale.returning.exception.SaleReturnItemNotFoundException;
+import com.angelica.pos.sale.returning.exception.SaleReturnNotAllowedException;
+import com.angelica.pos.sale.returning.exception.SaleReturnNotFoundException;
+import com.angelica.pos.sale.returning.exception.SaleReturnQuantityExceededException;
 import com.angelica.pos.security.InvalidJwtException;
 import com.angelica.pos.user.exception.UserAlreadyExistsException;
 import com.angelica.pos.user.exception.UserNotFoundException;
@@ -89,6 +97,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CustomerAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleCustomerAlreadyExists(
             CustomerAlreadyExistsException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(CustomerHasPendingReceivablesException.class)
+    public ResponseEntity<ErrorResponse> handleCustomerHasPendingReceivables(
+            CustomerHasPendingReceivablesException exception,
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
@@ -227,6 +243,43 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SaleReturnNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSaleReturnNotFound(
+            SaleReturnNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SaleReturnItemNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSaleReturnItemNotFound(
+            SaleReturnItemNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(DuplicateSaleReturnItemException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateSaleReturnItem(
+            DuplicateSaleReturnItemException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            SaleItemDoesNotBelongToSaleException.class,
+            SaleReturnNotAllowedException.class,
+            SaleReturnQuantityExceededException.class,
+            CreditSaleReceivableRequiredException.class
+    })
+    public ResponseEntity<ErrorResponse> handleSaleReturnConflict(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
     }
 
     @ExceptionHandler({BadCredentialsException.class, UsernameNotFoundException.class})

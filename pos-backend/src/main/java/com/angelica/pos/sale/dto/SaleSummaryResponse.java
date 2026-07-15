@@ -44,6 +44,46 @@ public class SaleSummaryResponse {
             BigDecimal receivableOutstandingBalance,
             ReceivableStatus receivableStatus
     ) {
+        this(
+                id,
+                createdAt,
+                createdById,
+                createdByUsername,
+                customerId,
+                customerFullName,
+                saleType,
+                status,
+                total,
+                totalItems,
+                receivableId,
+                receivableOriginalAmount,
+                BigDecimal.ZERO,
+                receivableOriginalAmount,
+                receivablePaidAmount,
+                receivableOutstandingBalance,
+                receivableStatus
+        );
+    }
+
+    public SaleSummaryResponse(
+            Long id,
+            OffsetDateTime createdAt,
+            Long createdById,
+            String createdByUsername,
+            Long customerId,
+            String customerFullName,
+            SaleType saleType,
+            SaleStatus status,
+            BigDecimal total,
+            Long totalItems,
+            Long receivableId,
+            BigDecimal receivableOriginalAmount,
+            BigDecimal receivableReturnedAmount,
+            BigDecimal receivableAdjustedAmount,
+            BigDecimal receivablePaidAmount,
+            BigDecimal receivableOutstandingBalance,
+            ReceivableStatus receivableStatus
+    ) {
         this.id = id;
         this.createdAt = createdAt;
         this.createdById = createdById;
@@ -58,6 +98,8 @@ public class SaleSummaryResponse {
             this.receivable = new SaleReceivableResponse(
                     receivableId,
                     receivableOriginalAmount,
+                    receivableReturnedAmount,
+                    receivableAdjustedAmount,
                     receivablePaidAmount,
                     receivableOutstandingBalance,
                     receivableStatus

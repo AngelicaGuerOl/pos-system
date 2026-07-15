@@ -55,6 +55,8 @@ public class ReceivableServiceImpl implements ReceivableService {
                 .sale(sale)
                 .customer(customer)
                 .originalAmount(sale.getTotal())
+                .returnedAmount(BigDecimal.ZERO)
+                .adjustedAmount(sale.getTotal())
                 .paidAmount(BigDecimal.ZERO)
                 .outstandingBalance(sale.getTotal())
                 .status(ReceivableStatus.PENDING)

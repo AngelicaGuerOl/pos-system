@@ -1,822 +1,633 @@
-# Documentacion de cambios backend no subidos
+# Cambios backend pendientes de subir a GitHub
 
-Este documento resume los cambios pendientes en `pos-backend` relacionados con ventas fiadas, cuentas por cobrar y abonos. La documentacion se basa en el estado actual del repositorio local y esta enfocada en explicar que se agrego o modifico, para que sirve cada parte y como se integra con la arquitectura existente.
+Este documento describe los cambios locales actuales en `pos-backend` que todavia no estan subidos al repositorio remoto. El objetivo principal de estos cambios es agregar devoluciones de ventas, ajustar cuentas por cobrar cuando una venta fiada se devuelve, registrar movimientos de inventario/caja relacionados y bloquear la desactivacion de clientes con saldo pendiente.
 
-## Alcance
-
-- Se trabajo solo en el backend Spring Boot.
-- No se agregaron dependencias nuevas.
-- No se modificaron migraciones anteriores.
-- Se mantuvo `spring.jpa.hibernate.ddl-auto=validate`.
-- Se conservaron las capas existentes: controller, service, repository, mapper, DTOs, entity, exceptions y migraciones Flyway.
-- No se implemento frontend, devoluciones, cancelaciones de ventas, intereses, limite de credito ni cierre de caja.
+No se documentan migraciones anteriores como modificadas: la migracion nueva agregada para esta fase es `V9__create_sale_returns.sql`.
 
 ## Resumen funcional
 
-Se agregaron dos capacidades principales:
+- Se agrego el backend de devoluciones parciales y totales de ventas.
+- Se agregaron tablas `sale_returns` y `sale_return_items`.
+- Se agrego `returned_quantity` a `sale_items` para controlar cuanto se ha devuelto por articulo.
+- Se agregaron estados de venta `PARTIALLY_RETURNED` y `RETURNED`.
+- Se agrego el tipo de movimiento de inventario `SALE_RETURN`.
+- Se agrego el tipo de movimiento de caja `SALE_REFUND`.
+- Se ajustaron cuentas por cobrar con `returned_amount` y `adjusted_amount`.
+- Las devoluciones de venta `CASH` generan reembolso en efectivo.
+- Las devoluciones de venta `CREDIT` ajustan la cuenta por cobrar y solo reembolsan efectivo si el cliente ya habia pagado mas que el nuevo monto ajustado.
+- Se agrego bloqueo para impedir desactivar clientes con saldo pendiente.
 
-1. Ventas fiadas con `saleType = CREDIT`.
-   - La venta se registra como completada.
-   - El inventario se descuenta.
-   - No se crea movimiento de efectivo.
-   - Se crea automaticamente una cuenta por cobrar.
+## Migracion Flyway
 
-2. Abonos en efectivo a cuentas por cobrar.
-   - El abono actualiza saldo pagado, saldo pendiente y estado de la deuda.
-   - El abono crea automaticamente un `CashMovement` de entrada.
-   - La operacion completa corre en una sola transaccion.
-   - Se bloquea la cuenta por cobrar al registrar el abono para evitar saldos incorrectos por concurrencia.
+### `src/main/resources/db/migration/V9__create_sale_returns.sql`
 
-## Migraciones Flyway
+Crea y ajusta el esquema necesario para devoluciones:
 
-### `src/main/resources/db/migration/V7__create_receivables.sql`
-
-Crea la base de datos para cuentas por cobrar y ajusta ventas para soportar fiado.
-
-Cambios principales:
-
-- Ajusta `sales.cash_received` y `sales.change_amount` para permitir `NULL`.
-- Reemplaza las restricciones anteriores de efectivo por `chk_sales_payment_fields_by_type`.
-- Para ventas `CASH` exige:
-  - `cash_received IS NOT NULL`.
-  - `change_amount IS NOT NULL`.
-  - `cash_received >= total`.
-  - `change_amount = cash_received - total`.
-- Para ventas `CREDIT` exige:
-  - `customer_id IS NOT NULL`.
-  - `cash_received IS NULL`.
-  - `change_amount IS NULL`.
-- Crea la tabla `receivables`.
-- Garantiza una sola cuenta por cobrar por venta mediante `sale_id UNIQUE`.
-- Agrega llaves foraneas a `sales` y `customers` con `ON DELETE RESTRICT` y `ON UPDATE RESTRICT`.
-- Agrega estados permitidos:
-  - `PENDING`
-  - `PARTIALLY_PAID`
-  - `PAID`
+- Actualiza el `CHECK` de `sales.status` para aceptar:
+  - `COMPLETED`
+  - `PARTIALLY_RETURNED`
+  - `RETURNED`
   - `CANCELLED`
-- Agrega restricciones de importes y consistencia del saldo.
-- Agrega indices por `customer_id`, `status` y `created_at`.
+- Agrega `sale_items.returned_quantity`.
+  - Sirve para saber cuanto de cada renglon de venta ya fue devuelto.
+  - Evita calcular disponibilidad cargando todas las devoluciones en memoria.
+- Agrega `receivables.returned_amount`.
+  - Guarda el total devuelto acumulado de una venta fiada.
+- Agrega `receivables.adjusted_amount`.
+  - Representa el monto vigente de la deuda despues de devoluciones.
+  - Se calcula como `original_amount - returned_amount`.
+- Reemplaza restricciones de `receivables` para que el saldo se calcule contra `adjusted_amount`, no contra `original_amount`.
+- Permite el estado `CANCELLED` en cuentas por cobrar cuando una venta fiada queda totalmente devuelta.
+- Agrega `SALE_RETURN` a los movimientos de inventario.
+- Agrega `SALE_REFUND` a los movimientos de caja.
+- Crea `sale_returns`.
+  - Guarda la devolucion principal, la venta asociada, usuario que proceso, motivo, total y reembolso en efectivo.
+- Crea `sale_return_items`.
+  - Guarda los articulos devueltos, cantidad, precio historico y subtotal.
+- Agrega indices para consultas por venta, caja, usuario, fecha, articulo y producto.
 
-### `src/main/resources/db/migration/V8__create_receivable_payments.sql`
+## Modulo de devoluciones de venta
 
-Crea la tabla de abonos a cuentas por cobrar.
+Paquete nuevo:
 
-Cambios principales:
+`src/main/java/com/angelica/pos/sale/returning`
 
-- Crea `receivable_payments`.
-- Relaciona cada abono con:
-  - `receivables`.
-  - `cash_sessions`.
-  - `users`.
-- Exige `amount > 0`.
-- Permite `notes` opcional de hasta 255 caracteres.
-- Agrega indices por:
-  - `receivable_id`.
-  - `cash_session_id`.
-  - `received_by_user_id`.
-  - `created_at`.
+### Controller
+
+#### `controller/SaleReturnController.java`
+
+Expone los endpoints:
+
+- `POST /api/sales/{saleId}/returns`
+  - Registra una devolucion parcial o total.
+  - Usa `@AuthenticationPrincipal AuthenticatedUser`.
+  - Devuelve `201 Created` con `Location`.
+- `GET /api/sales/{saleId}/returns`
+  - Lista devoluciones paginadas de una venta.
+- `GET /api/sale-returns/{returnId}`
+  - Consulta el detalle de una devolucion.
+
+No recibe `userId`, `cashSessionId`, totales ni movimientos desde frontend.
+
+### DTOs
+
+#### `dto/SaleReturnRequest.java`
+
+Request principal para registrar una devolucion.
+
+- Contiene `reason`.
+- Contiene lista de articulos `items`.
+- No recibe totales, usuario, caja, inventario ni estado nuevo.
+
+#### `dto/SaleReturnItemRequest.java`
+
+Request por articulo a devolver.
+
+- Contiene `saleItemId`.
+- Contiene `quantity`.
+- El backend valida que pertenezca a la venta y que la cantidad no supere lo disponible.
+
+#### `dto/SaleReturnSummaryResponse.java`
+
+Respuesta resumida para listados.
+
+Incluye:
+
+- ID de devolucion.
+- Venta.
+- Tipo de venta.
+- Total devuelto.
+- Reembolso en efectivo.
+- Motivo.
+- Caja cuando aplique.
+- Usuario que proceso.
+- Fecha.
+
+#### `dto/SaleReturnDetailResponse.java`
+
+Respuesta de detalle.
+
+Extiende la informacion resumida con:
+
+- Cliente.
+- Estado actualizado de venta.
+- Cuenta por cobrar actualizada cuando es venta fiada.
+- Lista de articulos devueltos.
+
+#### `dto/SaleReturnItemResponse.java`
+
+Respuesta por articulo devuelto.
+
+Incluye:
+
+- `saleItemId`.
+- `productId`.
+- Nombre historico del producto.
+- Codigo historico.
+- Unidad.
+- Cantidad devuelta.
+- Precio unitario historico.
+- Subtotal.
+
+### Entities
+
+#### `entity/SaleReturn.java`
+
+Entidad principal de devolucion.
+
+Relaciones:
+
+- `Sale`.
+- `CashSession`, opcional.
+- `User processedBy`.
+- Lista de `SaleReturnItem`.
+
+Sirve como registro auditable e inmutable de una devolucion. Guarda `totalAmount`, `cashRefundAmount`, `reason` y `createdAt`.
+
+#### `entity/SaleReturnItem.java`
+
+Entidad de articulos devueltos.
+
+Relaciones:
+
+- `SaleReturn`.
+- `SaleItem`.
+- `Product`.
+
+Guarda cantidad, precio historico y subtotal. Permite conservar auditoria aunque el producto cambie despues.
+
+### Mapper
+
+#### `mapper/SaleReturnMapper.java`
+
+Mapper MapStruct para convertir entidades de devolucion a respuestas.
+
+Mapea:
+
+- IDs de venta.
+- Tipo de venta.
+- Usuario procesador.
+- Caja asociada.
+- Cliente.
+- Items devueltos.
+
+Tambien arma el nombre completo del cliente sin exponer la entidad completa.
+
+### Repository
+
+#### `repository/SaleReturnRepository.java`
+
+Repositorio JPA para devoluciones.
+
+Incluye consultas para:
+
+- Listar devoluciones por venta con paginacion.
+- Consultar devolucion por ID con grafo de entidades.
+- Sumar monto devuelto por venta cuando el detalle de venta necesita mostrar total devuelto.
+
+### Service
+
+#### `service/SaleReturnService.java`
+
+Contrato del servicio de devoluciones.
+
+Define:
+
+- Registrar devolucion.
+- Consultar devoluciones de una venta.
+- Consultar devolucion por ID.
+
+#### `service/SaleReturnServiceImpl.java`
+
+Implementacion transaccional de devoluciones.
+
+Responsabilidades principales:
+
+- Valida request, motivo, articulos duplicados, cantidad positiva y escala decimal.
+- Obtiene usuario autenticado y verifica que siga activo.
+- Bloquea la venta para devolucion.
+- Verifica permisos de acceso:
+  - `ADMIN` puede operar ventas permitidas.
+  - `CASHIER` solo ventas que le correspondan segun reglas actuales.
+- Valida que la venta este en estado retornable:
+  - `COMPLETED`.
+  - `PARTIALLY_RETURNED`.
+- Bloquea `SaleItem` solicitados.
+- Verifica que los articulos pertenezcan a la venta.
+- Calcula cantidad disponible:
+  - `quantity - returnedQuantity`.
+- Bloquea productos afectados.
+- Calcula subtotal con precio historico del `SaleItem`.
+- Actualiza `returnedQuantity` en cada `SaleItem`.
+- Crea `SaleReturn` y `SaleReturnItem`.
+- Restaura inventario mediante `InventoryMovementService.registerSaleReturnMovement`.
+- Para venta `CASH`:
+  - Reembolsa el total devuelto.
+  - Requiere caja abierta.
+  - Crea `CashMovement SALE_REFUND`.
+- Para venta `CREDIT`:
+  - Obtiene y bloquea la cuenta por cobrar.
+  - Incrementa `returnedAmount`.
+  - Recalcula `adjustedAmount`.
+  - Recalcula `paidAmount` y `outstandingBalance`.
+  - Cambia estado de cuenta a `PENDING`, `PARTIALLY_PAID`, `PAID` o `CANCELLED`.
+  - Solo crea reembolso si el cliente habia pagado mas que el nuevo monto ajustado.
+- Actualiza estado de venta:
+  - `PARTIALLY_RETURNED` si aun queda cantidad por devolver.
+  - `RETURNED` si todos los articulos fueron devueltos.
+
+Toda la operacion se ejecuta en una sola transaccion.
+
+### Excepciones
+
+#### `exception/CreditSaleReceivableRequiredException.java`
+
+Se lanza cuando una venta fiada no tiene cuenta por cobrar asociada y se intenta devolver.
+
+#### `exception/DuplicateSaleReturnItemException.java`
+
+Se lanza cuando el request trae dos veces el mismo `saleItemId`.
+
+#### `exception/SaleItemDoesNotBelongToSaleException.java`
+
+Se lanza cuando el articulo solicitado existe, pero no pertenece a la venta indicada.
+
+#### `exception/SaleReturnItemNotFoundException.java`
+
+Se lanza cuando el `saleItemId` solicitado no existe.
+
+#### `exception/SaleReturnNotAllowedException.java`
+
+Se usa para conflictos de negocio:
+
+- Venta ya devuelta.
+- Venta cancelada.
+- Estado no retornable.
+- Devolucion mayor al monto permitido.
+
+#### `exception/SaleReturnNotFoundException.java`
+
+Se lanza cuando no existe una devolucion por ID.
+
+#### `exception/SaleReturnQuantityExceededException.java`
+
+Se lanza cuando se intenta devolver mas cantidad que la disponible.
 
 ## Cambios en ventas
 
-### `src/main/java/com/angelica/pos/sale/dto/SaleRequest.java`
+### `sale/entity/SaleStatus.java`
 
-Se ajusto el request de venta para soportar ventas en efectivo y fiadas con reglas distintas:
+Agrega:
 
-- `saleType` sigue siendo obligatorio.
-- `cashReceived` ahora puede ser `null` para ventas `CREDIT`.
-- Para ventas `CASH`, el servicio sigue exigiendo efectivo recibido.
-- Para ventas `CREDIT`, el servicio rechaza efectivo recibido.
+- `PARTIALLY_RETURNED`.
+- `RETURNED`.
 
-Esto permite que el frontend envie:
+Sirven para distinguir ventas parcialmente devueltas de ventas completamente devueltas.
 
-```json
-{
-  "saleType": "CREDIT",
-  "customerId": 15,
-  "cashReceived": null,
-  "items": [
-    {
-      "productId": 1,
-      "quantity": 2
-    }
-  ]
-}
-```
+### `sale/entity/SaleItem.java`
 
-### `src/main/java/com/angelica/pos/sale/entity/Sale.java`
+Agrega `returnedQuantity`.
 
-Se ajusto la entidad para representar ambos tipos de venta:
+Sirve para controlar por renglon cuanto ya fue devuelto y calcular disponibilidad sin consultar todas las devoluciones historicas.
 
-- `cashReceived` puede ser `null` en ventas fiadas.
-- `changeAmount` puede ser `null` en ventas fiadas.
-- Se agrego la relacion uno a uno con `Receivable`.
+### `sale/entity/Sale.java`
 
-La venta sigue siendo la fuente de la entrega de productos; el estado de la deuda se controla aparte en `Receivable`.
+Se ajusta la entidad para integrarse con devoluciones y permitir consultar informacion relacionada de forma coherente con el detalle de venta.
 
-### `src/main/java/com/angelica/pos/sale/service/SaleServiceImpl.java`
+### `sale/dto/SaleItemResponse.java`
 
-Se extendio el flujo transaccional de `POST /api/sales`.
+Agrega informacion de devolucion por articulo:
 
-Para `CASH`:
+- Cantidad vendida.
+- Cantidad devuelta.
+- Cantidad disponible para devolver.
 
-- Requiere caja abierta.
-- El cliente es opcional.
-- Requiere `cashReceived`.
-- Calcula `changeAmount`.
-- Crea `Sale` y `SaleItems`.
-- Descuenta inventario.
-- Crea `InventoryMovement` por articulo.
-- Crea `CashMovement` tipo `CASH_SALE`.
-- No crea `Receivable`.
+Esto permite al frontend mostrar y validar devoluciones sin consultar productos actuales.
 
-Para `CREDIT`:
+### `sale/dto/SaleDetailResponse.java`
 
-- Requiere caja abierta.
-- Requiere cliente activo.
-- Rechaza `cashReceived`.
-- Deja `changeAmount` en `null`.
-- Calcula el total en backend.
-- Crea `Sale` y `SaleItems`.
-- Descuenta inventario.
-- Crea `InventoryMovement` por articulo.
-- No crea `CashMovement`.
-- Crea una cuenta por cobrar con estado `PENDING`.
+Agrega informacion necesaria para detalle de venta con devoluciones:
 
-Todo se ejecuta dentro de la misma transaccion. Si falla la creacion de la cuenta por cobrar, se revierte la venta, sus items, movimientos de inventario y cambios de stock.
+- Items con cantidades devueltas/disponibles.
+- Total devuelto.
+- Cuenta por cobrar actualizada cuando aplique.
 
-### `src/main/java/com/angelica/pos/sale/mapper/SaleMapper.java`
+### `sale/dto/SaleSummaryResponse.java`
 
-Se integro el mapeo de informacion de cuenta por cobrar en las respuestas de venta usando MapStruct y el mapper de `Receivable`.
+Se ajusta el resumen de venta para incluir informacion de cuenta por cobrar cuando aplica, de forma que historial pueda mostrar estado de pago.
 
-### DTOs de ventas modificados
+### `sale/dto/SaleReceivableResponse.java`
 
-- `src/main/java/com/angelica/pos/sale/dto/SaleResponse.java`
-- `src/main/java/com/angelica/pos/sale/dto/SaleDetailResponse.java`
-- `src/main/java/com/angelica/pos/sale/dto/SaleSummaryResponse.java`
+Agrega campos de cuenta ajustada:
 
-Ahora pueden incluir informacion opcional de la cuenta por cobrar asociada. Para ventas en efectivo, este objeto queda en `null`.
-
-### `src/main/java/com/angelica/pos/sale/dto/SaleReceivableResponse.java`
-
-DTO nuevo para exponer un resumen de la cuenta por cobrar dentro de respuestas de venta:
-
-- `id`.
-- `originalAmount`.
+- `returnedAmount`.
+- `adjustedAmount`.
 - `paidAmount`.
 - `outstandingBalance`.
 - `status`.
 
-No expone entidades JPA.
+Sirve para que ventas fiadas reflejen correctamente devoluciones y saldo.
 
-### `src/main/java/com/angelica/pos/sale/repository/SaleRepository.java`
+### `sale/mapper/SaleMapper.java`
 
-Se ajustaron consultas para traer correctamente la informacion necesaria de ventas con cliente, usuario, items y cuenta por cobrar, evitando problemas de carga perezosa en detalle e historial.
+Actualiza el mapeo de respuestas de venta para:
 
-### Excepciones nuevas de ventas
+- Exponer cantidades devueltas.
+- Exponer cantidades disponibles.
+- Mapear datos actualizados de cuenta por cobrar.
+- Evitar exponer entidades JPA.
 
-- `src/main/java/com/angelica/pos/sale/exception/CreditSaleCustomerRequiredException.java`
-  - Se usa cuando una venta fiada no trae cliente.
-- `src/main/java/com/angelica/pos/sale/exception/CreditSaleCashReceivedNotAllowedException.java`
-  - Se usa cuando una venta fiada intenta enviar efectivo recibido.
+### `sale/repository/SaleRepository.java`
 
-## Modulo de cuentas por cobrar
+Agrega consultas necesarias para devoluciones:
 
-Paquete principal:
+- Bloqueo pesimista de venta al registrar devolucion.
+- Consulta de detalle con relaciones necesarias.
+- Resumen de ventas incluyendo informacion de receivable.
 
-`src/main/java/com/angelica/pos/receivable`
+Evita condiciones de carrera cuando dos devoluciones intentan operar la misma venta.
 
-### Entidades
+### `sale/repository/SaleItemRepository.java`
 
-#### `entity/Receivable.java`
+Repositorio nuevo para operar `SaleItem`.
 
-Representa la deuda generada por una venta fiada.
+Incluye consulta con bloqueo pesimista para obtener los renglones solicitados de una venta durante una devolucion. Esto evita que dos devoluciones simultaneas superen la cantidad vendida.
 
-Campos principales:
+### `sale/service/SaleServiceImpl.java`
 
-- `id`.
-- `sale`.
-- `customer`.
-- `originalAmount`.
-- `paidAmount`.
-- `outstandingBalance`.
-- `status`.
-- `createdAt`.
-- `paidAt`.
+Actualiza el detalle y resumen de ventas para considerar devoluciones:
 
-Usa relaciones `LAZY`, `BigDecimal` para importes y `OffsetDateTime` para fechas.
+- Calcula o consulta total devuelto.
+- Devuelve informacion de cuenta por cobrar actualizada.
+- Mantiene reglas de ventas existentes.
 
-#### `entity/ReceivableStatus.java`
+### `src/test/java/com/angelica/pos/sale/service/SaleServiceImplTest.java`
 
-Enum de estados:
+Pruebas actualizadas para reflejar que el servicio de ventas ahora depende de informacion de devoluciones al construir respuestas de detalle/resumen.
 
-- `PENDING`: deuda creada sin abonos.
-- `PARTIALLY_PAID`: deuda con abonos parciales.
-- `PAID`: deuda liquidada.
-- `CANCELLED`: estado reservado para cancelacion futura, sin implementar flujo de cancelacion.
+## Cambios en inventario
 
-### DTOs
+### `inventory/movement/entity/InventoryMovementType.java`
 
-#### `dto/ReceivableSummaryResponse.java`
+Agrega `SALE_RETURN`.
 
-Respuesta resumida para listados paginados:
+Representa la entrada de inventario generada cuando se devuelve un producto vendido.
 
-- ID de cuenta.
-- ID de venta.
-- ID de cliente.
-- Nombre completo del cliente.
-- Importe original.
+### `inventory/movement/service/InventoryMovementService.java`
+
+Agrega contrato interno para registrar movimiento de inventario por devolucion de venta.
+
+### `inventory/movement/service/InventoryMovementServiceImpl.java`
+
+Implementa `registerSaleReturnMovement`.
+
+Responsabilidades:
+
+- Incrementar stock del producto devuelto.
+- Crear movimiento `IN`.
+- Usar tipo `SALE_RETURN`.
+- Asociar la referencia al item de devolucion.
+- Participar en la misma transaccion de la devolucion.
+
+### `catalog/product/repository/ProductRepository.java`
+
+Agrega consulta para bloquear productos por ID de forma determinista durante devoluciones.
+
+Esto reduce riesgo de inconsistencias de stock y deadlocks cuando una devolucion afecta varios productos.
+
+## Cambios en caja
+
+### `cash/movement/entity/CashMovementType.java`
+
+Agrega `SALE_REFUND`.
+
+Representa salida de efectivo por reembolso de una devolucion.
+
+### `cash/movement/service/CashMovementService.java`
+
+Agrega contrato interno para registrar reembolso de devolucion de venta.
+
+### `cash/movement/service/CashMovementServiceImpl.java`
+
+Implementa registro de `SALE_REFUND`.
+
+Responsabilidades:
+
+- Crear movimiento `OUTFLOW`.
+- Usar monto real reembolsado.
+- Asociar caja abierta del usuario que procesa la devolucion.
+- Guardar `sourceType` y `sourceId` de la devolucion.
+- Participar en la misma transaccion.
+
+Tambien conserva el flujo existente de ventas en efectivo, abonos y movimientos manuales.
+
+## Cambios en cuentas por cobrar
+
+### `receivable/entity/Receivable.java`
+
+Agrega campos:
+
+- `returnedAmount`.
+- `adjustedAmount`.
+
+Estos campos permiten que la deuda de una venta fiada se reduzca por devoluciones sin modificar `originalAmount`, que queda como monto historico original.
+
+### `receivable/dto/ReceivableSummaryResponse.java`
+
+Agrega datos de ajuste por devolucion:
+
+- Monto original.
+- Monto devuelto.
+- Monto ajustado.
 - Pagado.
 - Saldo pendiente.
-- Estado.
-- Fechas.
 
-#### `dto/ReceivableDetailResponse.java`
+Permite que frontend muestre estado de cuenta correcto.
 
-Respuesta de detalle:
+### `receivable/service/ReceivableServiceImpl.java`
 
-- Informacion del resumen.
-- Venta asociada.
-- Usuario que registro la venta.
-- Fecha de venta.
-- Datos basicos del cliente.
+Inicializa receivables nuevos con:
 
-#### `dto/ReceivableCustomerResponse.java`
+- `returnedAmount = 0`.
+- `adjustedAmount = originalAmount`.
 
-DTO auxiliar para exponer datos basicos del cliente sin entregar la entidad completa.
+Mantiene compatibilidad con ventas fiadas nuevas.
 
-### Mapper
+### `receivable/repository/ReceivableRepository.java`
 
-#### `mapper/ReceivableMapper.java`
+Agrega:
 
-MapStruct centraliza la conversion de entidad a DTO:
+- `findBySaleIdForUpdate`.
+  - Bloquea la cuenta por cobrar cuando una devolucion fiada la ajusta.
+- `existsPendingBalanceByCustomerId`.
+  - Verifica si un cliente tiene saldo pendiente antes de desactivarlo.
 
-- Convierte `Receivable` a respuesta resumida.
-- Convierte `Receivable` a detalle.
-- Construye nombre completo del cliente.
-- Mapea informacion asociada de venta y cliente.
+### `receivable/payment/service/ReceivablePaymentServiceImpl.java`
 
-### Repository
+Ajusta calculos de abonos para usar `adjustedAmount` en lugar de `originalAmount`.
 
-#### `repository/ReceivableRepository.java`
+Esto evita que un abono posterior a una devolucion permita pagar mas que el monto vigente de la deuda.
 
-Responsabilidades:
+## Cambios en clientes
 
-- Buscar cuentas por cobrar.
-- Validar existencia por venta.
-- Obtener detalle con relaciones necesarias.
-- Buscar y bloquear una cuenta por cobrar para registrar abonos.
+### `customer/exception/CustomerHasPendingReceivablesException.java`
 
-La busqueda bloqueada usa bloqueo pesimista para evitar que dos abonos simultaneos superen el saldo pendiente.
+Excepcion nueva para impedir desactivar clientes que todavia tienen saldo pendiente.
 
-### Service
+### `customer/service/CustomerServiceImpl.java`
 
-#### `service/ReceivableService.java`
+Antes de desactivar un cliente, consulta `ReceivableRepository.existsPendingBalanceByCustomerId`.
 
-Contrato del modulo de cuentas por cobrar.
+Si existe saldo pendiente:
 
-#### `service/ReceivableServiceImpl.java`
+- No desactiva el cliente.
+- Lanza `CustomerHasPendingReceivablesException`.
+- El handler global responde `409 CONFLICT`.
 
-Responsabilidades:
+## Seguridad y errores
 
-- Crear la cuenta por cobrar desde una venta fiada.
-- Consultar historial global paginado.
-- Consultar detalle por ID.
-- Consultar cuentas por cliente.
-- Validar rango de fechas.
-- Limitar tamano de pagina a 50.
-- Usar `PageResponse` compartido.
+### `security/SecurityConfig.java`
 
-Los filtros se aplican en base de datos mediante `Specification`, no en memoria.
+Agrega permisos para endpoints de devoluciones:
 
-### Controller
+- `POST /api/sales/{saleId}/returns`.
+- `GET /api/sales/{saleId}/returns`.
+- `GET /api/sale-returns/{returnId}`.
 
-#### `controller/ReceivableController.java`
+Respeta JWT, roles y el flujo actual de autenticacion.
 
-Endpoints agregados:
+### `shared/exception/GlobalExceptionHandler.java`
 
-- `GET /api/receivables`
-  - Historial global.
-  - Solo `ADMIN`.
-  - Filtros: `customerId`, `saleId`, `status`, `from`, `to`.
-  - Paginado.
-  - Orden por defecto: `createdAt DESC`.
+Integra nuevas excepciones:
 
-- `GET /api/receivables/{id}`
-  - Detalle de cuenta.
-  - `ADMIN` y `CASHIER`.
-  - Valida ID positivo.
+- Cliente con saldo pendiente.
+- Devolucion no encontrada.
+- Item de devolucion no encontrado.
+- Item duplicado.
+- Venta o item no retornable.
+- Cantidad excedida.
+- Venta fiada sin receivable.
 
-- `GET /api/customers/{customerId}/receivables`
-  - Cuentas por cobrar de un cliente.
-  - `ADMIN` y `CASHIER`.
-  - Valida cliente.
-  - Filtro opcional por `status`.
-  - Paginado.
+Mapea errores a:
 
-### Excepciones de cuentas por cobrar
+- `400 BAD_REQUEST` para request invalido.
+- `404 NOT_FOUND` para recursos inexistentes.
+- `409 CONFLICT` para conflictos de negocio.
+- `403 FORBIDDEN` cuando aplica acceso no permitido.
 
-- `exception/ReceivableNotFoundException.java`
-  - Cuenta por cobrar inexistente.
-- `exception/SaleAlreadyHasReceivableException.java`
-  - Evita crear mas de una cuenta por cobrar para la misma venta.
+## Reglas de negocio implementadas
 
-## Modulo de abonos
+### Venta CASH
 
-Paquete principal:
+Una devolucion de venta de contado:
 
-`src/main/java/com/angelica/pos/receivable/payment`
-
-### Entidad
-
-#### `entity/ReceivablePayment.java`
-
-Representa un abono en efectivo registrado sobre una cuenta por cobrar.
-
-Campos:
-
-- `id`.
-- `receivable`.
-- `cashSession`.
-- `receivedBy`.
-- `amount`.
-- `notes`.
-- `createdAt`.
-
-Los abonos son registros de auditoria: no se agregaron endpoints para editar o eliminar.
-
-### DTOs
-
-#### `dto/ReceivablePaymentRequest.java`
-
-Request para registrar abonos:
-
-```json
-{
-  "amount": 300.00,
-  "notes": "Abono semanal"
-}
-```
-
-Validaciones:
-
-- `amount` obligatorio.
-- Mayor que cero.
-- Hasta dos decimales.
-- `notes` opcional.
-- `notes` maximo 255 caracteres.
-
-El frontend no debe enviar `receivableId`, usuario, caja, saldo, estado ni movimiento de caja.
-
-#### `dto/ReceivablePaymentResponse.java`
-
-Respuesta del abono:
-
-- ID del abono.
-- ID de cuenta por cobrar.
-- ID de venta.
-- ID y nombre del cliente.
-- ID de caja.
-- ID y username del usuario que recibio.
-- Monto.
-- Notas.
-- Fecha.
-- `paidAmount` actualizado.
-- `outstandingBalance` actualizado.
-- `receivableStatus` actualizado.
-
-### Mapper
-
-#### `mapper/ReceivablePaymentMapper.java`
-
-MapStruct transforma `ReceivablePayment` a `ReceivablePaymentResponse`, incluyendo datos relacionados de cuenta, venta, cliente, caja y usuario.
-
-### Repository
-
-#### `repository/ReceivablePaymentRepository.java`
-
-Responsabilidades:
-
-- Consultar abonos paginados por cuenta.
-- Consultar detalle de un abono con sus relaciones.
-- Ordenar por `createdAt DESC` desde el `Pageable`.
-
-### Service
-
-#### `service/ReceivablePaymentService.java`
-
-Contrato del modulo de abonos.
-
-#### `service/ReceivablePaymentServiceImpl.java`
-
-Implementa el flujo transaccional de registro de abono:
-
-1. Valida request.
-2. Obtiene el usuario autenticado y verifica que este activo.
-3. Busca la caja abierta del usuario.
-4. Bloquea la cuenta por cobrar con bloqueo pesimista.
-5. Rechaza cuentas `PAID` o `CANCELLED`.
-6. Rechaza abonos mayores al saldo pendiente.
-7. Actualiza:
-   - `paidAmount = paidAmount + amount`.
-   - `outstandingBalance = originalAmount - paidAmount`.
-8. Si el saldo queda en cero:
-   - cambia estado a `PAID`.
-   - asigna `paidAt`.
-9. Si queda saldo:
-   - cambia estado a `PARTIALLY_PAID`.
-   - mantiene `paidAt = null`.
-10. Guarda el abono.
-11. Crea el `CashMovement` de entrada mediante el servicio de caja.
-
-La transaccion no usa `REQUIRES_NEW`. Si falla cualquier paso, se revierte el abono, el saldo de la cuenta y el movimiento de caja.
-
-### Controller
-
-#### `controller/ReceivablePaymentController.java`
-
-Endpoints agregados:
-
-- `POST /api/receivables/{receivableId}/payments`
-  - Registra un abono.
-  - Roles: `ADMIN`, `CASHIER`.
-  - Responde `201 Created`.
-  - Agrega header `Location` hacia `/api/receivable-payments/{id}`.
-
-- `GET /api/receivables/{receivableId}/payments`
-  - Consulta abonos de una cuenta.
-  - Roles: `ADMIN`, `CASHIER`.
-  - Paginado.
-  - Orden por defecto: `createdAt DESC`.
-  - Tamano maximo: 50.
-
-- `GET /api/receivable-payments/{id}`
-  - Consulta un abono por ID.
-  - Roles: `ADMIN`, `CASHIER`.
-  - Devuelve 404 cuando no existe.
-
-### Excepciones de abonos
-
-- `exception/ReceivablePaymentNotFoundException.java`
-  - Abono inexistente.
-- `exception/ReceivableAlreadyPaidException.java`
-  - Se intenta abonar una cuenta ya pagada.
-- `exception/ReceivableCancelledException.java`
-  - Se intenta abonar una cuenta cancelada.
-- `exception/ReceivablePaymentExceedsBalanceException.java`
-  - El abono supera el saldo pendiente.
-
-## Integracion con movimientos de caja
-
-### `src/main/java/com/angelica/pos/cash/movement/service/CashMovementService.java`
-
-Se agrego un metodo interno para registrar entradas de efectivo por abonos a cuentas por cobrar.
-
-### `src/main/java/com/angelica/pos/cash/movement/service/CashMovementServiceImpl.java`
-
-Se agrego `registerReceivablePayment(...)`.
-
-Comportamiento:
-
-- Crea un movimiento `INFLOW`.
-- Usa tipo `RECEIVABLE_PAYMENT`.
-- Usa descripcion `Abono a cuenta por cobrar`.
-- Usa `sourceType = RECEIVABLE_PAYMENT`.
-- Usa `sourceId = paymentId`.
-- Participa en la misma transaccion del abono.
-- No se expone como endpoint manual.
-
-El flujo existente de ventas en efectivo, entradas manuales y salidas manuales se conserva.
-
-## Seguridad
-
-### `src/main/java/com/angelica/pos/security/SecurityConfig.java`
-
-Se agregaron reglas respetando el orden existente.
-
-Permisos de ventas:
-
-- `POST /api/sales`
-  - `ADMIN`
-  - `CASHIER`
-
-Permisos de cuentas por cobrar:
-
-- `GET /api/receivables`
-  - Solo `ADMIN`.
-- `GET /api/receivables/{id}`
-  - `ADMIN`
-  - `CASHIER`.
-- `GET /api/customers/{customerId}/receivables`
-  - `ADMIN`
-  - `CASHIER`.
-
-Permisos de abonos:
-
-- `POST /api/receivables/{receivableId}/payments`
-  - `ADMIN`
-  - `CASHIER`.
-- `GET /api/receivables/{receivableId}/payments`
-  - `ADMIN`
-  - `CASHIER`.
-- `GET /api/receivable-payments/{id}`
-  - `ADMIN`
-  - `CASHIER`.
-
-Se mantiene JWT, CORS, `MustChangePasswordFilter` y el manejo actual de 401/403.
-
-## Manejo de errores
-
-### `src/main/java/com/angelica/pos/shared/exception/GlobalExceptionHandler.java`
-
-Se integraron las nuevas excepciones al manejador global existente. No se creo otro `@RestControllerAdvice`.
-
-Codigos usados:
-
-- `400 Bad Request`
-  - Validaciones invalidas.
-  - IDs no positivos.
-  - Rango de fechas invalido.
-  - Tamano de pagina mayor a 50.
-- `404 Not Found`
-  - Cuenta por cobrar inexistente.
-  - Abono inexistente.
-  - Cliente inexistente o inactivo.
-- `409 Conflict`
-  - Caja abierta requerida.
-  - Venta ya asociada a una cuenta por cobrar.
-  - Cuenta ya pagada.
-  - Cuenta cancelada.
-  - Abono mayor al saldo pendiente.
-
-## Concurrencia
-
-Para abonos se usa bloqueo pesimista sobre `Receivable` desde `ReceivableRepository.findByIdForUpdate(...)`.
-
-Objetivo:
-
-- Evitar que dos abonos simultaneos lean el mismo saldo pendiente.
-- Evitar que la suma de abonos supere la deuda real.
-- Mantener consistentes `paidAmount`, `outstandingBalance`, `status` y `paidAt`.
-
-No se usaron bloqueos en memoria ni `synchronized`.
-
-## Paginacion
-
-Se reutiliza `PageResponse` compartido.
-
-Se aplica tamano maximo de pagina de 50 en:
-
-- Historial global de cuentas por cobrar.
-- Cuentas por cobrar de cliente.
-- Abonos de una cuenta.
-
-Los filtros de cuentas por cobrar se ejecutan en base de datos mediante `Specification`.
-
-## Pruebas agregadas o modificadas
-
-### Ventas
-
-- `src/test/java/com/angelica/pos/sale/controller/SaleControllerTest.java`
-- `src/test/java/com/angelica/pos/sale/dto/SaleRequestValidationTest.java`
-- `src/test/java/com/angelica/pos/sale/service/SaleServiceImplTest.java`
-
-Cubren principalmente:
-
-- Venta `CASH` existente.
-- Venta `CREDIT` valida.
-- Cliente obligatorio para venta fiada.
-- Rechazo de efectivo recibido en venta fiada.
-- Creacion de receivable desde venta fiada.
-- Que venta fiada no cree `CashMovement`.
-- Respuestas de venta con informacion de cuenta por cobrar.
-
-### Cuentas por cobrar
-
-- `src/test/java/com/angelica/pos/receivable/service/ReceivableServiceImplTest.java`
-- `src/test/java/com/angelica/pos/receivable/controller/ReceivableControllerTest.java`
-
-Cubren principalmente:
-
-- Creacion automatica de cuenta por cobrar.
-- Consulta paginada.
-- Filtros basicos.
-- Detalle por ID.
-- Cuentas por cobrar por cliente.
-- Permisos `ADMIN` y `CASHIER`.
-- 404 cuando no existe.
-
-### Abonos
-
-- `src/test/java/com/angelica/pos/receivable/payment/service/ReceivablePaymentServiceImplTest.java`
-- `src/test/java/com/angelica/pos/receivable/payment/controller/ReceivablePaymentControllerTest.java`
-
-Cubren principalmente:
-
-- Abono parcial.
-- Abono total.
-- Cambio de estado a `PAID`.
-- Creacion de `CashMovement` tipo `RECEIVABLE_PAYMENT`.
-- Rechazo de abono mayor al saldo.
-- Rechazo de cuentas `PAID` o `CANCELLED`.
-- Rechazo cuando no hay caja abierta.
-- Reversion si falla el movimiento de caja.
-- Permisos de `ADMIN` y `CASHIER`.
-- Usuario no autenticado.
-
-## Contratos principales
-
-### Crear venta fiada
-
-Endpoint:
-
-`POST /api/sales`
-
-Request:
-
-```json
-{
-  "saleType": "CREDIT",
-  "customerId": 15,
-  "cashReceived": null,
-  "items": [
-    {
-      "productId": 1,
-      "quantity": 2
-    }
-  ]
-}
-```
-
-Reglas:
-
+- Restaura inventario.
+- Crea un movimiento de inventario `SALE_RETURN` por articulo.
+- Reembolsa el total devuelto.
 - Requiere caja abierta.
-- Requiere cliente activo.
-- No permite efectivo recibido.
-- No crea movimiento de caja.
-- Crea cuenta por cobrar.
+- Crea un movimiento de caja `SALE_REFUND`.
 
-### Crear venta en efectivo
+### Venta CREDIT
 
-Endpoint:
+Una devolucion de venta fiada:
 
-`POST /api/sales`
+- Restaura inventario.
+- Crea movimientos `SALE_RETURN`.
+- Ajusta la cuenta por cobrar asociada.
+- No reembolsa el total automaticamente.
+- Solo reembolsa efectivo si el cliente habia pagado mas que el nuevo `adjustedAmount`.
+- Puede no requerir caja si no hay reembolso.
 
-Request:
+### Estado de venta
 
-```json
-{
-  "saleType": "CASH",
-  "customerId": null,
-  "cashReceived": 400.00,
-  "items": [
-    {
-      "productId": 1,
-      "quantity": 2
-    }
-  ]
-}
-```
+La venta queda:
 
-Reglas:
+- `PARTIALLY_RETURNED` si queda al menos un articulo con cantidad disponible.
+- `RETURNED` si todos los articulos fueron devueltos.
 
-- Requiere caja abierta.
-- Cliente opcional.
-- Requiere efectivo recibido.
-- Calcula cambio.
-- Crea movimiento de caja `CASH_SALE`.
-- No crea cuenta por cobrar.
+### Estado de cuenta por cobrar
 
-### Registrar abono
+La cuenta por cobrar queda:
 
-Endpoint:
+- `PENDING` si no hay pagos y aun hay saldo.
+- `PARTIALLY_PAID` si hay pago parcial.
+- `PAID` si el saldo queda en cero y el monto ajustado es mayor que cero.
+- `CANCELLED` si el monto ajustado queda en cero por devolucion total.
 
-`POST /api/receivables/{receivableId}/payments`
+## Archivos agregados
 
-Request:
-
-```json
-{
-  "amount": 300.00,
-  "notes": "Abono semanal"
-}
-```
-
-Reglas:
-
-- Requiere usuario autenticado.
-- Requiere usuario activo.
-- Requiere caja abierta.
-- Rechaza cuentas pagadas o canceladas.
-- Rechaza monto mayor al saldo.
-- Actualiza saldo y estado.
-- Crea movimiento de caja `RECEIVABLE_PAYMENT`.
-
-## Archivos creados
-
-### Migraciones
-
-- `src/main/resources/db/migration/V7__create_receivables.sql`
-- `src/main/resources/db/migration/V8__create_receivable_payments.sql`
-
-### Modulo `receivable`
-
-- `src/main/java/com/angelica/pos/receivable/entity/Receivable.java`
-- `src/main/java/com/angelica/pos/receivable/entity/ReceivableStatus.java`
-- `src/main/java/com/angelica/pos/receivable/dto/ReceivableSummaryResponse.java`
-- `src/main/java/com/angelica/pos/receivable/dto/ReceivableDetailResponse.java`
-- `src/main/java/com/angelica/pos/receivable/dto/ReceivableCustomerResponse.java`
-- `src/main/java/com/angelica/pos/receivable/mapper/ReceivableMapper.java`
-- `src/main/java/com/angelica/pos/receivable/repository/ReceivableRepository.java`
-- `src/main/java/com/angelica/pos/receivable/service/ReceivableService.java`
-- `src/main/java/com/angelica/pos/receivable/service/ReceivableServiceImpl.java`
-- `src/main/java/com/angelica/pos/receivable/controller/ReceivableController.java`
-- `src/main/java/com/angelica/pos/receivable/exception/ReceivableNotFoundException.java`
-- `src/main/java/com/angelica/pos/receivable/exception/SaleAlreadyHasReceivableException.java`
-
-### Modulo `receivable.payment`
-
-- `src/main/java/com/angelica/pos/receivable/payment/entity/ReceivablePayment.java`
-- `src/main/java/com/angelica/pos/receivable/payment/dto/ReceivablePaymentRequest.java`
-- `src/main/java/com/angelica/pos/receivable/payment/dto/ReceivablePaymentResponse.java`
-- `src/main/java/com/angelica/pos/receivable/payment/mapper/ReceivablePaymentMapper.java`
-- `src/main/java/com/angelica/pos/receivable/payment/repository/ReceivablePaymentRepository.java`
-- `src/main/java/com/angelica/pos/receivable/payment/service/ReceivablePaymentService.java`
-- `src/main/java/com/angelica/pos/receivable/payment/service/ReceivablePaymentServiceImpl.java`
-- `src/main/java/com/angelica/pos/receivable/payment/controller/ReceivablePaymentController.java`
-- `src/main/java/com/angelica/pos/receivable/payment/exception/ReceivablePaymentNotFoundException.java`
-- `src/main/java/com/angelica/pos/receivable/payment/exception/ReceivableAlreadyPaidException.java`
-- `src/main/java/com/angelica/pos/receivable/payment/exception/ReceivableCancelledException.java`
-- `src/main/java/com/angelica/pos/receivable/payment/exception/ReceivablePaymentExceedsBalanceException.java`
-
-### Ventas
-
-- `src/main/java/com/angelica/pos/sale/dto/SaleReceivableResponse.java`
-- `src/main/java/com/angelica/pos/sale/exception/CreditSaleCustomerRequiredException.java`
-- `src/main/java/com/angelica/pos/sale/exception/CreditSaleCashReceivedNotAllowedException.java`
-
-### Pruebas
-
-- `src/test/java/com/angelica/pos/receivable/service/ReceivableServiceImplTest.java`
-- `src/test/java/com/angelica/pos/receivable/controller/ReceivableControllerTest.java`
-- `src/test/java/com/angelica/pos/receivable/payment/service/ReceivablePaymentServiceImplTest.java`
-- `src/test/java/com/angelica/pos/receivable/payment/controller/ReceivablePaymentControllerTest.java`
+- `src/main/java/com/angelica/pos/customer/exception/CustomerHasPendingReceivablesException.java`
+- `src/main/java/com/angelica/pos/sale/repository/SaleItemRepository.java`
+- `src/main/java/com/angelica/pos/sale/returning/controller/SaleReturnController.java`
+- `src/main/java/com/angelica/pos/sale/returning/dto/SaleReturnDetailResponse.java`
+- `src/main/java/com/angelica/pos/sale/returning/dto/SaleReturnItemRequest.java`
+- `src/main/java/com/angelica/pos/sale/returning/dto/SaleReturnItemResponse.java`
+- `src/main/java/com/angelica/pos/sale/returning/dto/SaleReturnRequest.java`
+- `src/main/java/com/angelica/pos/sale/returning/dto/SaleReturnSummaryResponse.java`
+- `src/main/java/com/angelica/pos/sale/returning/entity/SaleReturn.java`
+- `src/main/java/com/angelica/pos/sale/returning/entity/SaleReturnItem.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/CreditSaleReceivableRequiredException.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/DuplicateSaleReturnItemException.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/SaleItemDoesNotBelongToSaleException.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/SaleReturnItemNotFoundException.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/SaleReturnNotAllowedException.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/SaleReturnNotFoundException.java`
+- `src/main/java/com/angelica/pos/sale/returning/exception/SaleReturnQuantityExceededException.java`
+- `src/main/java/com/angelica/pos/sale/returning/mapper/SaleReturnMapper.java`
+- `src/main/java/com/angelica/pos/sale/returning/repository/SaleReturnRepository.java`
+- `src/main/java/com/angelica/pos/sale/returning/service/SaleReturnService.java`
+- `src/main/java/com/angelica/pos/sale/returning/service/SaleReturnServiceImpl.java`
+- `src/main/resources/db/migration/V9__create_sale_returns.sql`
 
 ## Archivos modificados
 
+- `src/main/java/com/angelica/pos/cash/movement/entity/CashMovementType.java`
 - `src/main/java/com/angelica/pos/cash/movement/service/CashMovementService.java`
 - `src/main/java/com/angelica/pos/cash/movement/service/CashMovementServiceImpl.java`
+- `src/main/java/com/angelica/pos/catalog/product/repository/ProductRepository.java`
+- `src/main/java/com/angelica/pos/customer/service/CustomerServiceImpl.java`
+- `src/main/java/com/angelica/pos/inventory/movement/entity/InventoryMovementType.java`
+- `src/main/java/com/angelica/pos/inventory/movement/service/InventoryMovementService.java`
+- `src/main/java/com/angelica/pos/inventory/movement/service/InventoryMovementServiceImpl.java`
+- `src/main/java/com/angelica/pos/receivable/dto/ReceivableSummaryResponse.java`
+- `src/main/java/com/angelica/pos/receivable/entity/Receivable.java`
+- `src/main/java/com/angelica/pos/receivable/payment/service/ReceivablePaymentServiceImpl.java`
+- `src/main/java/com/angelica/pos/receivable/repository/ReceivableRepository.java`
+- `src/main/java/com/angelica/pos/receivable/service/ReceivableServiceImpl.java`
 - `src/main/java/com/angelica/pos/sale/dto/SaleDetailResponse.java`
-- `src/main/java/com/angelica/pos/sale/dto/SaleRequest.java`
-- `src/main/java/com/angelica/pos/sale/dto/SaleResponse.java`
+- `src/main/java/com/angelica/pos/sale/dto/SaleItemResponse.java`
+- `src/main/java/com/angelica/pos/sale/dto/SaleReceivableResponse.java`
 - `src/main/java/com/angelica/pos/sale/dto/SaleSummaryResponse.java`
 - `src/main/java/com/angelica/pos/sale/entity/Sale.java`
+- `src/main/java/com/angelica/pos/sale/entity/SaleItem.java`
+- `src/main/java/com/angelica/pos/sale/entity/SaleStatus.java`
 - `src/main/java/com/angelica/pos/sale/mapper/SaleMapper.java`
 - `src/main/java/com/angelica/pos/sale/repository/SaleRepository.java`
 - `src/main/java/com/angelica/pos/sale/service/SaleServiceImpl.java`
 - `src/main/java/com/angelica/pos/security/SecurityConfig.java`
 - `src/main/java/com/angelica/pos/shared/exception/GlobalExceptionHandler.java`
-- `src/test/java/com/angelica/pos/sale/controller/SaleControllerTest.java`
-- `src/test/java/com/angelica/pos/sale/dto/SaleRequestValidationTest.java`
 - `src/test/java/com/angelica/pos/sale/service/SaleServiceImplTest.java`
 
-## Verificacion local
+## Verificacion pendiente
 
-Intentos realizados previamente:
+En esta maquina no se pudo ejecutar `./mvnw clean verify` porque no hay Java disponible o `JAVA_HOME` no esta configurado correctamente. Tampoco existe `mvn` instalado en el entorno.
+
+Comandos intentados anteriormente:
 
 ```bash
 ./mvnw clean verify
-```
-
-Resultado:
-
-```text
-The JAVA_HOME environment variable is not defined correctly,
-this environment variable is needed to run this program.
-```
-
-Tambien se intento:
-
-```bash
 mvn clean verify
 ```
 
 Resultado:
 
-```text
-mvn: command not found
+- `./mvnw clean verify`: falla por `JAVA_HOME`.
+- `mvn clean verify`: falla porque `mvn` no esta instalado.
+
+Para validar estos cambios se debe ejecutar en un entorno con JDK configurado:
+
+```bash
+cd pos-backend
+./mvnw clean verify
 ```
 
-Por lo tanto, la verificacion completa queda pendiente hasta configurar correctamente Java/Maven en el entorno local.
-
-## Confirmaciones
-
-- No se modificaron migraciones anteriores a `V7`.
-- No se agregaron dependencias nuevas.
-- No se crearon endpoints publicos para crear cuentas por cobrar manualmente.
-- No se implementaron abonos con tarjeta o transferencia.
-- No se implementaron edicion ni eliminacion de abonos.
-- No se implementaron devoluciones.
-- No se implementaron cancelaciones.
-- No se implementaron intereses.
-- No se implemento limite de credito.
-- No se implemento frontend en estos cambios backend.

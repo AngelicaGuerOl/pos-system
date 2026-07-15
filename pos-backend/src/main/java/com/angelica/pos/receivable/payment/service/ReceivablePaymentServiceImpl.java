@@ -68,7 +68,10 @@ public class ReceivablePaymentServiceImpl implements ReceivablePaymentService {
         validateReceivableCanReceivePayment(receivable, request.getAmount());
 
         BigDecimal paidAmount = receivable.getPaidAmount().add(request.getAmount());
-        BigDecimal outstandingBalance = receivable.getOriginalAmount().subtract(paidAmount);
+        BigDecimal adjustedAmount = receivable.getAdjustedAmount() == null
+                ? receivable.getOriginalAmount()
+                : receivable.getAdjustedAmount();
+        BigDecimal outstandingBalance = adjustedAmount.subtract(paidAmount);
         receivable.setPaidAmount(paidAmount);
         receivable.setOutstandingBalance(outstandingBalance);
 

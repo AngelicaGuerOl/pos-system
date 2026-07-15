@@ -5,9 +5,11 @@ import com.angelica.pos.customer.dto.CustomerResponse;
 import com.angelica.pos.customer.dto.CustomerUpdateRequest;
 import com.angelica.pos.customer.entity.Customer;
 import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
+import com.angelica.pos.customer.exception.CustomerHasPendingReceivablesException;
 import com.angelica.pos.customer.exception.CustomerNotFoundException;
 import com.angelica.pos.customer.mapper.CustomerMapper;
 import com.angelica.pos.customer.repository.CustomerRepository;
+import com.angelica.pos.receivable.repository.ReceivableRepository;
 import com.angelica.pos.shared.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,7 @@ public class CustomerServiceImpl implements CustomerService {
     private static final int MAX_PAGE_SIZE = 50;
 
     private final CustomerRepository customerRepository;
+    private final ReceivableRepository receivableRepository;
     private final CustomerMapper customerMapper;
 
     @Override
@@ -96,6 +99,9 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public void deactivate(Long id) {
         Customer customer = findActiveCustomerById(id);
+        if (receivableRepository.existsPendingBalanceByCustomerId(id)) {
+            throw new CustomerHasPendingReceivablesException(id);
+        }
         customer.setActive(false);
     }
 

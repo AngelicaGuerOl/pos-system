@@ -161,6 +161,25 @@ public class CashMovementServiceImpl implements CashMovementService {
         return cashMovementRepository.save(cashMovement);
     }
 
+    @Override
+    @Transactional
+    public CashMovement registerSaleRefund(CashSession cashSession, User user, BigDecimal amount, Long saleReturnId) {
+        validateRefundMovement(cashSession, user, amount, saleReturnId);
+
+        CashMovement cashMovement = CashMovement.builder()
+                .cashSession(cashSession)
+                .createdBy(user)
+                .direction(CashMovementDirection.OUTFLOW)
+                .type(CashMovementType.SALE_REFUND)
+                .amount(amount)
+                .description("Reembolso por devolucion de venta")
+                .sourceType("SALE_RETURN")
+                .sourceId(saleReturnId)
+                .build();
+
+        return cashMovementRepository.save(cashMovement);
+    }
+
     private CashMovementResponse registerManualMovement(
             ManualCashMovementRequest request,
             AuthenticatedUser authenticatedUser,
@@ -265,6 +284,30 @@ public class CashMovementServiceImpl implements CashMovementService {
         }
         if (paymentId == null || paymentId <= 0) {
             throw new IllegalArgumentException("Payment id must be positive");
+        }
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount is required");
+        }
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+        if (amount.stripTrailingZeros().scale() > MAX_AMOUNT_SCALE) {
+            throw new IllegalArgumentException("Amount must have up to 2 decimals");
+        }
+        if (getIntegerDigits(amount) > MAX_AMOUNT_INTEGER_DIGITS) {
+            throw new IllegalArgumentException("Amount must have up to 10 integer digits");
+        }
+    }
+
+    private void validateRefundMovement(CashSession cashSession, User user, BigDecimal amount, Long saleReturnId) {
+        if (cashSession == null || cashSession.getId() == null) {
+            throw new IllegalArgumentException("Cash session is required");
+        }
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+        if (saleReturnId == null || saleReturnId <= 0) {
+            throw new IllegalArgumentException("Sale return id must be positive");
         }
         if (amount == null) {
             throw new IllegalArgumentException("Amount is required");

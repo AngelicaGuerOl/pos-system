@@ -30,6 +30,7 @@ import com.angelica.pos.sale.exception.SaleAccessDeniedException;
 import com.angelica.pos.sale.exception.SaleNotFoundException;
 import com.angelica.pos.sale.mapper.SaleMapper;
 import com.angelica.pos.sale.repository.SaleRepository;
+import com.angelica.pos.sale.returning.repository.SaleReturnRepository;
 import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.shared.response.PageResponse;
 import com.angelica.pos.user.entity.Role;
@@ -67,6 +68,7 @@ public class SaleServiceImpl implements SaleService {
     private final InventoryMovementService inventoryMovementService;
     private final CashMovementService cashMovementService;
     private final ReceivableService receivableService;
+    private final SaleReturnRepository saleReturnRepository;
     private final SaleMapper saleMapper;
 
     @Override
@@ -156,7 +158,9 @@ public class SaleServiceImpl implements SaleService {
             throw new SaleAccessDeniedException();
         }
 
-        return saleMapper.toDetailResponse(sale);
+        SaleDetailResponse response = saleMapper.toDetailResponse(sale);
+        response.setTotalReturnedAmount(saleReturnRepository.sumTotalAmountBySaleId(sale.getId()));
+        return response;
     }
 
     @Override

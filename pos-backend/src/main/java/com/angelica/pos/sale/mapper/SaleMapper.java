@@ -10,6 +10,7 @@ import com.angelica.pos.sale.entity.SaleItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Mapper(componentModel = "spring", uses = ReceivableMapper.class)
@@ -30,6 +31,8 @@ public interface SaleMapper {
     SaleDetailResponse toDetailResponse(Sale sale);
 
     @Mapping(target = "productId", source = "product.id")
+    @Mapping(target = "soldQuantity", source = "quantity")
+    @Mapping(target = "returnableQuantity", expression = "java(toReturnableQuantity(saleItem))")
     SaleItemResponse toItemResponse(SaleItem saleItem);
 
     List<SaleResponse> toResponseList(List<Sale> sales);
@@ -39,5 +42,12 @@ public interface SaleMapper {
             return null;
         }
         return customer.getFirstName() + " " + customer.getLastName();
+    }
+
+    default BigDecimal toReturnableQuantity(SaleItem saleItem) {
+        BigDecimal returnedQuantity = saleItem.getReturnedQuantity() == null
+                ? BigDecimal.ZERO
+                : saleItem.getReturnedQuantity();
+        return saleItem.getQuantity().subtract(returnedQuantity);
     }
 }

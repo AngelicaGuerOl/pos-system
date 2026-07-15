@@ -18,6 +18,14 @@ public interface ReceivableRepository extends JpaRepository<Receivable, Long>, J
 
     boolean existsBySaleId(Long saleId);
 
+    @Query("""
+            SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
+            FROM Receivable r
+            WHERE r.customer.id = :customerId
+              AND r.outstandingBalance > 0
+            """)
+    boolean existsPendingBalanceByCustomerId(@Param("customerId") Long customerId);
+
     Optional<Receivable> findBySaleId(Long saleId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -29,6 +37,16 @@ public interface ReceivableRepository extends JpaRepository<Receivable, Long>, J
             WHERE r.id = :id
             """)
     Optional<Receivable> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r
+            FROM Receivable r
+            JOIN FETCH r.sale
+            JOIN FETCH r.customer
+            WHERE r.sale.id = :saleId
+            """)
+    Optional<Receivable> findBySaleIdForUpdate(@Param("saleId") Long saleId);
 
     @Query("""
             SELECT r

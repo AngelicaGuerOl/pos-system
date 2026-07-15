@@ -5,5 +5,6 @@ public enum CashMovementType {
     MANUAL_EXIT,
     CASH_SALE,
     RECEIVABLE_PAYMENT,
-    CASH_REFUND
+    CASH_REFUND,
+    SALE_REFUND
 }

@@ -1,4 +1,4 @@
-package com.angelica.pos.sale.dto;
+package com.angelica.pos.sale.returning.dto;
 
 import com.angelica.pos.catalog.product.entity.ProductUnit;
 import lombok.Getter;
@@ -8,17 +8,14 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class SaleItemResponse {
+public class SaleReturnItemResponse {
 
-    private Long id;
+    private Long saleItemId;
     private Long productId;
     private String productName;
     private String productBarcode;
-    private ProductUnit productUnit;
+    private ProductUnit unit;
     private BigDecimal quantity;
-    private BigDecimal soldQuantity;
-    private BigDecimal returnedQuantity;
-    private BigDecimal returnableQuantity;
     private BigDecimal unitPrice;
-    private BigDecimal lineTotal;
+    private BigDecimal subtotal;
 }
