@@ -6,6 +6,8 @@ export type CashMovementType =
   | 'CASH_SALE'
   | 'RECEIVABLE_PAYMENT'
   | 'CASH_REFUND'
+  | 'SALE_REFUND'
+  | 'SALE_CANCELLATION_REFUND'
 
 export type CashMovement = {
   id: number
@@ -51,4 +53,6 @@ export const CASH_MOVEMENT_TYPE_LABELS: Record<CashMovementType, string> = {
   CASH_SALE: 'Venta en efectivo',
   RECEIVABLE_PAYMENT: 'Abono en efectivo',
   CASH_REFUND: 'Devolucion en efectivo',
+  SALE_REFUND: 'Reembolso por devolucion',
+  SALE_CANCELLATION_REFUND: 'Reembolso por cancelacion',
 }

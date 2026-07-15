@@ -11,6 +11,7 @@ import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
+import ReceiptRoundedIcon from '@mui/icons-material/ReceiptRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import {
@@ -87,8 +88,20 @@ const navigationItems: NavigationItem[] = [
   },
   {
     label: 'Caja',
-    path: ROUTE_PATHS.cashMovements,
     icon: <PointOfSaleRoundedIcon />,
+    children: [
+      {
+        label: 'Movimientos',
+        path: ROUTE_PATHS.cashMovements,
+        icon: <PointOfSaleRoundedIcon />,
+      },
+      {
+        label: 'Historial de sesiones',
+        path: ROUTE_PATHS.cashSessionsHistory,
+        icon: <ReceiptRoundedIcon />,
+        roles: ['ADMIN'],
+      },
+    ],
   },
   {
     label: 'Ventas',

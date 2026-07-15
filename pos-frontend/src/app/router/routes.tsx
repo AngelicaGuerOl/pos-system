@@ -1,7 +1,11 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import { ChangePasswordPage, LoginPage } from '../../features/auth'
 import { CashMovementsPage } from '../../features/cash/movement'
-import { OpenCashSessionPage, RequireOpenCashSession } from '../../features/cash/session'
+import {
+  CashSessionsHistoryPage,
+  OpenCashSessionPage,
+  RequireOpenCashSession,
+} from '../../features/cash/session'
 import { CategoriesPage } from '../../features/catalog/categories'
 import { ProductsPage } from '../../features/catalog/products'
 import { CustomersPage } from '../../features/customers'
@@ -70,6 +74,10 @@ export const appRoutes: RouteObject[] = [
               {
                 path: ROUTE_PATHS.receivables,
                 element: <ReceivablesPage />,
+              },
+              {
+                path: ROUTE_PATHS.cashSessionsHistory,
+                element: <CashSessionsHistoryPage />,
               },
               {
                 path: ROUTE_PATHS.customerAccountReceivable,

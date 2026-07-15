@@ -11,8 +11,16 @@ import {
   type AlertColor,
 } from '@mui/material'
 import { useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { DataGridShell } from '../../../../../shared/ui/components/DataGridShell'
 import { PageHeader } from '../../../../../shared/ui/components/PageHeader'
+import { ROUTE_PATHS } from '../../../../../shared/routes/routePaths'
+import { formatCurrency } from '../../../../../shared/utils/formatters'
+import { CashClosingSummary } from '../../../session/ui/components/CashClosingSummary'
+import { CloseCashSessionDialog } from '../../../session/ui/components/CloseCashSessionDialog'
+import { CurrentCashSessionPanel } from '../../../session/ui/components/CurrentCashSessionPanel'
+import { useCashSession } from '../../../session/ui/hooks/useCashSession'
+import { useCloseCashSession } from '../../../session/ui/hooks/useCloseCashSession'
 import type { ManualCashMovementData } from '../../domain/entities/CashMovement'
 import { CashMovementsGrid } from '../components/CashMovementsGrid'
 import { CashSummaryCards } from '../components/CashSummaryCards'
@@ -24,8 +32,13 @@ import {
 } from '../hooks/useRegisterCashMovement'
 
 export const CashMovementsPage = () => {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [modalMode, setModalMode] = useState<ManualCashMovementMode | null>(null)
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false)
+  const [lastClosingSummaryVisible, setLastClosingSummaryVisible] = useState(true)
   const [message, setMessage] = useState<{ text: string; severity: AlertColor } | null>(null)
+  const { clearCurrentSession, currentSession, refreshCurrentSession } = useCashSession()
   const {
     error,
     loading,
@@ -39,6 +52,7 @@ export const CashMovementsPage = () => {
     totalElements,
   } = useCashMovements()
   const registerMovement = useRegisterCashMovement()
+  const closeCashSession = useCloseCashSession()
 
   const modalTitle = modalMode === 'entry' ? 'Entrada registrada' : 'Salida registrada'
   const mutationError = useMemo(() => registerMovement.error, [registerMovement.error])
@@ -63,6 +77,89 @@ export const CashMovementsPage = () => {
     await refetch()
   }
 
+  const isClosedConflict = (status?: number, text?: string): boolean => {
+    const normalizedText = text?.toLowerCase() ?? ''
+    return Boolean(status === 409 && (normalizedText.includes('cerrada') || normalizedText.includes('closed')))
+  }
+
+  const handleStartClose = async () => {
+    const preview = await closeCashSession.loadPreview()
+    if (!preview) {
+      const error = closeCashSession.getLastError()
+      if (error?.status === 409) {
+        clearCurrentSession()
+        await refreshCurrentSession()
+        setMessage({
+          severity: 'warning',
+          text: isClosedConflict(error.status, error.message)
+            ? 'La caja ya fue cerrada.'
+            : 'No existe una caja abierta para cerrar.',
+        })
+        navigate(ROUTE_PATHS.cashSessionOpen, {
+          replace: true,
+          state: { from: location },
+        })
+        return
+      }
+
+      setMessage({
+        severity: 'error',
+        text: error?.message ?? 'No se pudo consultar el corte de caja.',
+      })
+      return
+    }
+
+    setCloseDialogOpen(true)
+  }
+
+  const handleCancelCloseDialog = () => {
+    setCloseDialogOpen(false)
+    closeCashSession.reset()
+  }
+
+  const handleCloseCashSession = async (values: { countedAmount: number; notes: string | null }) => {
+    const summary = await closeCashSession.closeCurrent(values)
+
+    if (!summary) {
+      const error = closeCashSession.getLastError()
+      if (error?.status === 409) {
+        clearCurrentSession()
+        await refreshCurrentSession()
+        setCloseDialogOpen(false)
+        setMessage({
+          severity: 'warning',
+          text: isClosedConflict(error.status, error.message)
+            ? 'La caja ya fue cerrada.'
+            : 'No existe una caja abierta para cerrar.',
+        })
+        navigate(ROUTE_PATHS.cashSessionOpen, {
+          replace: true,
+          state: { from: location },
+        })
+        return
+      }
+      return
+    }
+
+    clearCurrentSession()
+    await refreshCurrentSession()
+    setCloseDialogOpen(false)
+    setLastClosingSummaryVisible(true)
+    const difference = summary.differenceAmount ?? 0
+    setMessage({
+      severity: difference === 0 ? 'success' : 'warning',
+      text: difference === 0
+        ? 'Caja cerrada correctamente.'
+        : difference > 0
+          ? `Caja cerrada con un sobrante de ${formatCurrency(difference)}.`
+          : `Caja cerrada con un faltante de ${formatCurrency(Math.abs(difference))}.`,
+    })
+    navigate(ROUTE_PATHS.cashSessionOpen, {
+      replace: true,
+      state: { closingSummary: summary },
+    })
+  }
+
   return (
     <Stack spacing={3}>
       <PageHeader
@@ -70,7 +167,26 @@ export const CashMovementsPage = () => {
         title="Movimientos de caja"
       />
 
+      <CurrentCashSessionPanel
+        loading={closeCashSession.loadingPreview || closeCashSession.closing}
+        onCloseCashSession={() => void handleStartClose()}
+        session={currentSession}
+      />
+
       <CashSummaryCards summary={summary} />
+
+      {closeCashSession.closingSummary && lastClosingSummaryVisible ? (
+        <Stack spacing={1}>
+          <Alert
+            onClose={() => setLastClosingSummaryVisible(false)}
+            severity="success"
+            variant="outlined"
+          >
+            Corte definitivo generado.
+          </Alert>
+          <CashClosingSummary summary={closeCashSession.closingSummary} />
+        </Stack>
+      ) : null}
 
       <DataGridShell
         loading={loading}
@@ -133,6 +249,15 @@ export const CashMovementsPage = () => {
         onSubmit={handleSubmit}
         open={Boolean(modalMode)}
         serverErrors={mutationError?.validationErrors}
+      />
+
+      <CloseCashSessionDialog
+        closing={closeCashSession.closing}
+        error={closeCashSession.error}
+        onClose={handleCancelCloseDialog}
+        onSubmit={handleCloseCashSession}
+        open={closeDialogOpen}
+        preview={closeCashSession.preview}
       />
 
       <Snackbar autoHideDuration={3000} onClose={() => setMessage(null)} open={Boolean(message)}>

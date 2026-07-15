@@ -17,6 +17,7 @@ type CashSessionContextValue = {
   currentSession: CashSession | null
   error: NormalizedApiError | null
   loading: boolean
+  clearCurrentSession: () => void
   openCashSession: (data: OpenCashSessionData) => Promise<CashSession | null>
   refreshCurrentSession: () => Promise<CashSession | null>
 }
@@ -78,6 +79,12 @@ export const CashSessionProvider = ({ children }: PropsWithChildren) => {
     }
   }, [])
 
+  const clearCurrentSession = useCallback(() => {
+    setCurrentSession(null)
+    setError(null)
+    setCheckedUserId(user?.id ?? null)
+  }, [user?.id])
+
   const shouldCheckCurrentSession = Boolean(
     isAuthenticated && !authLoading && user && !user.mustChangePassword,
   )
@@ -88,10 +95,11 @@ export const CashSessionProvider = ({ children }: PropsWithChildren) => {
       currentSession,
       error,
       loading,
+      clearCurrentSession,
       openCashSession,
       refreshCurrentSession,
     }),
-    [currentSession, error, loading, openCashSession, refreshCurrentSession],
+    [clearCurrentSession, currentSession, error, loading, openCashSession, refreshCurrentSession],
   )
 
   return createElement(CashSessionContext.Provider, { value }, children)

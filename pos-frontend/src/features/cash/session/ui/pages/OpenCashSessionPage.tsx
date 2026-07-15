@@ -18,15 +18,31 @@ import { useAuth } from '../../../../auth'
 import { ROUTE_PATHS } from '../../../../../shared/routes/routePaths'
 import { PageHeader } from '../../../../../shared/ui/components/PageHeader'
 import { formatCurrency, formatDateTime } from '../../../../../shared/utils/formatters'
-import type { OpenCashSessionData } from '../../domain/entities/CashSession'
+import type { CashSessionClosingSummary, OpenCashSessionData } from '../../domain/entities/CashSession'
+import { CashClosingSummary } from '../components/CashClosingSummary'
 import { OpenCashSessionForm } from '../components/OpenCashSessionForm'
 import { useCashSession } from '../hooks/useCashSession'
+
+const getClosingSummaryFromLocationState = (state: unknown): CashSessionClosingSummary | null => {
+  if (typeof state !== 'object' || state === null || !('closingSummary' in state)) {
+    return null
+  }
+
+  const candidate = (state as { closingSummary?: unknown }).closingSummary
+
+  if (typeof candidate !== 'object' || candidate === null || !('sessionId' in candidate)) {
+    return null
+  }
+
+  return candidate as CashSessionClosingSummary
+}
 
 export const OpenCashSessionPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
   const { currentSession, error, loading, openCashSession } = useCashSession()
+  const closingSummary = getClosingSummaryFromLocationState(location.state)
 
   const handleOpen = async (values: OpenCashSessionData) => {
     const session = await openCashSession(values)
@@ -138,6 +154,15 @@ export const OpenCashSessionPage = () => {
       />
 
       <Grid container spacing={3}>
+        {closingSummary ? (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Caja cerrada correctamente. No se podrán registrar nuevas operaciones hasta abrir otra caja.
+            </Alert>
+            <CashClosingSummary summary={closingSummary} />
+          </Grid>
+        ) : null}
+
         <Grid size={{ xs: 12, md: 7, lg: 5 }}>
           <Card elevation={0} sx={{ border: 1, borderColor: 'divider' }}>
             <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
