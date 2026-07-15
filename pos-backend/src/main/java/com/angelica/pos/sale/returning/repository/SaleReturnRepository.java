@@ -1,5 +1,6 @@
 package com.angelica.pos.sale.returning.repository;
 
+import com.angelica.pos.cash.session.dto.OperationsClosingTotals;
 import com.angelica.pos.sale.returning.entity.SaleReturn;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,4 +36,14 @@ public interface SaleReturnRepository extends JpaRepository<SaleReturn, Long> {
     BigDecimal sumTotalAmountBySaleId(@Param("saleId") Long saleId);
 
     boolean existsBySaleId(Long saleId);
+
+    @Query("""
+            SELECT new com.angelica.pos.cash.session.dto.OperationsClosingTotals(
+                COALESCE(SUM(sr.totalAmount), 0.00),
+                COALESCE(SUM(sr.cashRefundAmount), 0.00)
+            )
+            FROM SaleReturn sr
+            WHERE sr.cashSession.id = :cashSessionId
+            """)
+    OperationsClosingTotals sumClosingTotalsByCashSessionId(@Param("cashSessionId") Long cashSessionId);
 }

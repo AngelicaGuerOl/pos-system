@@ -243,6 +243,18 @@ class CashMovementServiceImplTest {
     }
 
     @Test
+    void registerCashSaleRejectsClosedCashSession() {
+        User user = buildUser(5L);
+        CashSession cashSession = buildCashSession(11L, user);
+        cashSession.setStatus(CashSessionStatus.CLOSED);
+
+        assertThrows(
+                OpenCashSessionRequiredException.class,
+                () -> cashMovementService.registerCashSale(cashSession, user, new BigDecimal("100.00"), 20L)
+        );
+    }
+
+    @Test
     void findSessionMovementsRejectsPageSizeGreaterThanFifty() {
         assertThrows(
                 IllegalArgumentException.class,

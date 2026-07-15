@@ -274,6 +274,7 @@ public class CashMovementServiceImpl implements CashMovementService {
         if (cashSession == null || cashSession.getId() == null) {
             throw new IllegalArgumentException("Cash session is required");
         }
+        validateOpenCashSession(cashSession);
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required");
         }
@@ -303,6 +304,7 @@ public class CashMovementServiceImpl implements CashMovementService {
         if (cashSession == null || cashSession.getId() == null) {
             throw new IllegalArgumentException("Cash session is required");
         }
+        validateOpenCashSession(cashSession);
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required");
         }
@@ -327,6 +329,7 @@ public class CashMovementServiceImpl implements CashMovementService {
         if (cashSession == null || cashSession.getId() == null) {
             throw new IllegalArgumentException("Cash session is required");
         }
+        validateOpenCashSession(cashSession);
         if (user == null || user.getId() == null) {
             throw new IllegalArgumentException("User is required");
         }
@@ -350,6 +353,12 @@ public class CashMovementServiceImpl implements CashMovementService {
     private int getIntegerDigits(BigDecimal amount) {
         BigDecimal normalizedAmount = amount.stripTrailingZeros();
         return Math.max(normalizedAmount.precision() - normalizedAmount.scale(), 1);
+    }
+
+    private void validateOpenCashSession(CashSession cashSession) {
+        if (cashSession.getStatus() != CashSessionStatus.OPEN) {
+            throw new OpenCashSessionRequiredException();
+        }
     }
 
     private void validatePageSize(Pageable pageable) {

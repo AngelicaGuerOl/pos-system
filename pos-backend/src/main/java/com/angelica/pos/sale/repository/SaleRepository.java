@@ -1,5 +1,6 @@
 package com.angelica.pos.sale.repository;
 
+import com.angelica.pos.cash.session.dto.SalesClosingTotals;
 import com.angelica.pos.sale.dto.SaleSummaryResponse;
 import com.angelica.pos.sale.entity.Sale;
 import com.angelica.pos.sale.entity.SaleStatus;
@@ -142,4 +143,18 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             @Param("to") OffsetDateTime to,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT new com.angelica.pos.cash.session.dto.SalesClosingTotals(
+                COALESCE(SUM(CASE WHEN s.saleType = com.angelica.pos.sale.entity.SaleType.CASH
+                    THEN s.total ELSE 0.00 END), 0.00),
+                COALESCE(SUM(CASE WHEN s.saleType = com.angelica.pos.sale.entity.SaleType.CREDIT
+                    THEN s.total ELSE 0.00 END), 0.00),
+                COALESCE(SUM(s.total), 0.00)
+            )
+            FROM Sale s
+            WHERE s.cashSession.id = :cashSessionId
+              AND s.status <> com.angelica.pos.sale.entity.SaleStatus.CANCELLED
+            """)
+    SalesClosingTotals sumClosingTotalsByCashSessionId(@Param("cashSessionId") Long cashSessionId);
 }

@@ -138,6 +138,7 @@ class SaleCancellationServiceImplTest {
         User user = user(Role.ADMIN);
         Product product = product();
         Sale sale = sale(SaleType.CREDIT, SaleStatus.COMPLETED, user, product);
+        CashSession cashSession = cashSession(user);
         Receivable receivable = receivable(sale);
 
         when(userRepository.findByIdAndActiveTrue(user.getId())).thenReturn(Optional.of(user));
@@ -145,6 +146,8 @@ class SaleCancellationServiceImplTest {
         when(saleCancellationRepository.existsBySaleId(sale.getId())).thenReturn(false);
         when(saleReturnRepository.existsBySaleId(sale.getId())).thenReturn(false);
         when(productRepository.findAllByIdInForUpdate(List.of(product.getId()))).thenReturn(List.of(product));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.of(cashSession));
         when(receivablePaymentRepository.existsBySaleId(sale.getId())).thenReturn(false);
         when(receivableRepository.findBySaleIdForUpdate(sale.getId())).thenReturn(Optional.of(receivable));
         when(saleCancellationRepository.saveAndFlush(any(SaleCancellation.class))).thenAnswer(invocation -> {
@@ -164,7 +167,7 @@ class SaleCancellationServiceImplTest {
         verify(cashMovementService, never()).registerSaleCancellationRefund(any(), any(), any(), any());
         verify(saleCancellationRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(cancellation ->
                 cancellation.getRefundAmount().compareTo(BigDecimal.ZERO) == 0
-                        && cancellation.getCashSession() == null
+                        && cancellation.getCashSession() == cashSession
         ));
     }
 
@@ -194,6 +197,8 @@ class SaleCancellationServiceImplTest {
         when(saleCancellationRepository.existsBySaleId(sale.getId())).thenReturn(false);
         when(saleReturnRepository.existsBySaleId(sale.getId())).thenReturn(false);
         when(productRepository.findAllByIdInForUpdate(List.of(product.getId()))).thenReturn(List.of(product));
+        when(cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN))
+                .thenReturn(Optional.of(cashSession(user)));
         when(receivablePaymentRepository.existsBySaleId(sale.getId())).thenReturn(true);
 
         assertThrows(CreditSaleWithPaymentsCancellationException.class,

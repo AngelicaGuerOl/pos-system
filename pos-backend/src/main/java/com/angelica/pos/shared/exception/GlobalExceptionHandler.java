@@ -6,6 +6,8 @@ import com.angelica.pos.catalog.product.exception.ProductAlreadyExistsException;
 import com.angelica.pos.catalog.product.exception.ProductNotFoundException;
 import com.angelica.pos.cash.movement.exception.OpenCashSessionRequiredException;
 import com.angelica.pos.cash.session.exception.CashSessionAlreadyOpenException;
+import com.angelica.pos.cash.session.exception.CashSessionAlreadyClosedException;
+import com.angelica.pos.cash.session.exception.CashSessionInconsistentStateException;
 import com.angelica.pos.cash.session.exception.CashSessionNotFoundException;
 import com.angelica.pos.customer.exception.CustomerAlreadyExistsException;
 import com.angelica.pos.customer.exception.CustomerHasPendingReceivablesException;
@@ -140,6 +142,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CashSessionAlreadyOpenException.class)
     public ResponseEntity<ErrorResponse> handleCashSessionAlreadyOpen(
             CashSessionAlreadyOpenException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            CashSessionAlreadyClosedException.class,
+            CashSessionInconsistentStateException.class
+    })
+    public ResponseEntity<ErrorResponse> handleCashSessionConflict(
+            RuntimeException exception,
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);

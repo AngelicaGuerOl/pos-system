@@ -140,11 +140,8 @@ public class SaleReturnServiceImpl implements SaleReturnService {
             cashRefundAmount = applyCreditReturn(receivable, totalAmount);
         }
 
-        CashSession cashSession = null;
-        if (cashRefundAmount.compareTo(BigDecimal.ZERO) > 0) {
-            cashSession = cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN)
-                    .orElseThrow(OpenCashSessionRequiredException::new);
-        }
+        CashSession cashSession = cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN)
+                .orElseThrow(OpenCashSessionRequiredException::new);
 
         SaleReturn saleReturn = SaleReturn.builder()
                 .sale(sale)

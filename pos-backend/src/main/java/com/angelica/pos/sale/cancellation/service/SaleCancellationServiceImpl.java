@@ -79,12 +79,11 @@ public class SaleCancellationServiceImpl implements SaleCancellationService {
 
         Map<Long, Product> productsById = lockProducts(sale);
 
-        CashSession cashSession = null;
+        CashSession cashSession = cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN)
+                .orElseThrow(OpenCashSessionRequiredException::new);
         BigDecimal refundAmount = BigDecimal.ZERO;
         Receivable receivable = null;
         if (sale.getSaleType() == SaleType.CASH) {
-            cashSession = cashSessionRepository.findByOpenedByIdAndStatus(user.getId(), CashSessionStatus.OPEN)
-                    .orElseThrow(OpenCashSessionRequiredException::new);
             refundAmount = sale.getTotal();
         } else {
             validateCreditSaleHasNoPayments(sale.getId());

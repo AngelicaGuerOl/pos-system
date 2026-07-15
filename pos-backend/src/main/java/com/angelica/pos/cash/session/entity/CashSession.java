@@ -73,6 +73,53 @@ public class CashSession {
     @Column(name = "cash_difference", precision = 10, scale = 2)
     private BigDecimal cashDifference;
 
+    @DecimalMin(value = "0.00")
+    @Column(name = "total_inflows", precision = 12, scale = 2)
+    private BigDecimal totalInflows;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "total_outflows", precision = 12, scale = 2)
+    private BigDecimal totalOutflows;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "cash_sales_amount", precision = 12, scale = 2)
+    private BigDecimal cashSalesAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "credit_sales_amount", precision = 12, scale = 2)
+    private BigDecimal creditSalesAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "receivable_payments_amount", precision = 12, scale = 2)
+    private BigDecimal receivablePaymentsAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "manual_inflows_amount", precision = 12, scale = 2)
+    private BigDecimal manualInflowsAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "manual_outflows_amount", precision = 12, scale = 2)
+    private BigDecimal manualOutflowsAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "sale_refunds_amount", precision = 12, scale = 2)
+    private BigDecimal saleRefundsAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "sale_cancellation_refunds_amount", precision = 12, scale = 2)
+    private BigDecimal saleCancellationRefundsAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "returns_processed_amount", precision = 12, scale = 2)
+    private BigDecimal returnsProcessedAmount;
+
+    @DecimalMin(value = "0.00")
+    @Column(name = "cancellations_processed_amount", precision = 12, scale = 2)
+    private BigDecimal cancellationsProcessedAmount;
+
+    @Column(name = "closing_notes", length = 255)
+    private String closingNotes;
+
     @PrePersist
     public void prePersist() {
         if (openedAt == null) {

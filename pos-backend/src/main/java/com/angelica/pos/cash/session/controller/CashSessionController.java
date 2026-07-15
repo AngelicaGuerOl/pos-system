@@ -1,5 +1,7 @@
 package com.angelica.pos.cash.session.controller;
 
+import com.angelica.pos.cash.session.dto.CashSessionCloseRequest;
+import com.angelica.pos.cash.session.dto.CashSessionClosingSummaryResponse;
 import com.angelica.pos.cash.session.dto.CashSessionOpenRequest;
 import com.angelica.pos.cash.session.dto.CashSessionResponse;
 import com.angelica.pos.cash.session.service.CashSessionService;
@@ -55,6 +57,21 @@ public class CashSessionController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
+    @GetMapping("/current/closing-preview")
+    public ResponseEntity<CashSessionClosingSummaryResponse> getCurrentClosingPreview(
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(cashSessionService.getCurrentClosingPreview(authenticatedUser));
+    }
+
+    @PostMapping("/current/close")
+    public ResponseEntity<CashSessionClosingSummaryResponse> closeCurrent(
+            @RequestBody CashSessionCloseRequest request,
+            @AuthenticationPrincipal AuthenticatedUser authenticatedUser
+    ) {
+        return ResponseEntity.ok(cashSessionService.closeCurrent(request, authenticatedUser));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<CashSessionResponse> findById(
             @PathVariable
@@ -62,6 +79,15 @@ public class CashSessionController {
             Long id
     ) {
         return ResponseEntity.ok(cashSessionService.findById(id));
+    }
+
+    @GetMapping("/{id}/closing-summary")
+    public ResponseEntity<CashSessionClosingSummaryResponse> getClosingSummary(
+            @PathVariable
+            @Positive(message = "Cash session id must be positive")
+            Long id
+    ) {
+        return ResponseEntity.ok(cashSessionService.getClosingSummary(id));
     }
 
     @GetMapping
