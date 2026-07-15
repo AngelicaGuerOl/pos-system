@@ -6,5 +6,6 @@ public enum InventoryMovementType {
     MANUAL_EXIT,
     SALE,
     RETURN,
-    SALE_RETURN
+    SALE_RETURN,
+    SALE_CANCELLATION
 }

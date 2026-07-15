@@ -39,4 +39,11 @@ public interface ReceivablePaymentRepository extends JpaRepository<ReceivablePay
     )
     @EntityGraph(attributePaths = {"receivable", "receivable.sale", "receivable.customer", "cashSession", "receivedBy"})
     Page<ReceivablePayment> findByReceivableId(@Param("receivableId") Long receivableId, Pageable pageable);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END
+            FROM ReceivablePayment p
+            WHERE p.receivable.sale.id = :saleId
+            """)
+    boolean existsBySaleId(@Param("saleId") Long saleId);
 }

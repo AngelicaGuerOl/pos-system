@@ -32,4 +32,11 @@ public interface CashMovementService {
     CashMovement registerReceivablePayment(CashSession cashSession, User user, BigDecimal amount, Long paymentId);
 
     CashMovement registerSaleRefund(CashSession cashSession, User user, BigDecimal amount, Long saleReturnId);
+
+    CashMovement registerSaleCancellationRefund(
+            CashSession cashSession,
+            User user,
+            BigDecimal amount,
+            Long saleCancellationId
+    );
 }

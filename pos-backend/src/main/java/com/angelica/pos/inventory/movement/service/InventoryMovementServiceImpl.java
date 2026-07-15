@@ -237,6 +237,52 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
     }
 
     @Override
+    @Transactional
+    public InventoryMovement registerSaleCancellationMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long saleCancellationId,
+            User user
+    ) {
+        validateStockMovement(
+                lockedProduct == null ? null : lockedProduct.getId(),
+                quantity,
+                "Cancelacion de venta",
+                InventoryMovementDirection.IN,
+                InventoryMovementType.SALE_CANCELLATION,
+                "SALE_CANCELLATION",
+                saleCancellationId
+        );
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+
+        BigDecimal previousStock = lockedProduct.getCurrentStock();
+        BigDecimal newStock = calculateNewStock(
+                lockedProduct,
+                previousStock,
+                quantity,
+                InventoryMovementDirection.IN
+        );
+        lockedProduct.setCurrentStock(newStock);
+
+        InventoryMovement movement = InventoryMovement.builder()
+                .product(lockedProduct)
+                .createdBy(user)
+                .direction(InventoryMovementDirection.IN)
+                .type(InventoryMovementType.SALE_CANCELLATION)
+                .quantity(quantity)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .description("Cancelacion de venta")
+                .sourceType("SALE_CANCELLATION")
+                .sourceId(saleCancellationId)
+                .build();
+
+        return inventoryMovementRepository.save(movement);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public InventoryMovementResponse findById(Long id) {
         InventoryMovement movement = inventoryMovementRepository.findByIdWithDetails(id)
@@ -425,7 +471,8 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
                 || (type == InventoryMovementType.MANUAL_EXIT && direction == InventoryMovementDirection.OUT)
                 || (type == InventoryMovementType.SALE && direction == InventoryMovementDirection.OUT)
                 || (type == InventoryMovementType.RETURN && direction == InventoryMovementDirection.IN)
-                || (type == InventoryMovementType.SALE_RETURN && direction == InventoryMovementDirection.IN);
+                || (type == InventoryMovementType.SALE_RETURN && direction == InventoryMovementDirection.IN)
+                || (type == InventoryMovementType.SALE_CANCELLATION && direction == InventoryMovementDirection.IN);
 
         if (!valid) {
             throw new IllegalArgumentException("Inventory movement type and direction are not compatible");

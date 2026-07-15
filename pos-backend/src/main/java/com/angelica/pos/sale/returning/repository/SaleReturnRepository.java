@@ -33,4 +33,6 @@ public interface SaleReturnRepository extends JpaRepository<SaleReturn, Long> {
             WHERE sr.sale.id = :saleId
             """)
     BigDecimal sumTotalAmountBySaleId(@Param("saleId") Long saleId);
+
+    boolean existsBySaleId(Long saleId);
 }

@@ -24,6 +24,9 @@ import com.angelica.pos.sale.exception.CreditSaleNotAvailableException;
 import com.angelica.pos.sale.exception.InsufficientCashReceivedException;
 import com.angelica.pos.sale.exception.SaleAccessDeniedException;
 import com.angelica.pos.sale.exception.SaleNotFoundException;
+import com.angelica.pos.sale.cancellation.exception.CreditSaleWithPaymentsCancellationException;
+import com.angelica.pos.sale.cancellation.exception.SaleAlreadyCancelledException;
+import com.angelica.pos.sale.cancellation.exception.SaleCancellationNotAllowedException;
 import com.angelica.pos.sale.returning.exception.CreditSaleReceivableRequiredException;
 import com.angelica.pos.sale.returning.exception.DuplicateSaleReturnItemException;
 import com.angelica.pos.sale.returning.exception.SaleItemDoesNotBelongToSaleException;
@@ -243,6 +246,18 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            SaleAlreadyCancelledException.class,
+            SaleCancellationNotAllowedException.class,
+            CreditSaleWithPaymentsCancellationException.class
+    })
+    public ResponseEntity<ErrorResponse> handleSaleCancellationConflict(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
     }
 
     @ExceptionHandler(SaleReturnNotFoundException.class)

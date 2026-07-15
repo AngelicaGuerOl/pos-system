@@ -57,6 +57,13 @@ public interface InventoryMovementService {
             User user
     );
 
+    InventoryMovement registerSaleCancellationMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long saleCancellationId,
+            User user
+    );
+
     InventoryMovementResponse findById(Long id);
 
     PageResponse<InventoryMovementResponse> findAll(

@@ -180,6 +180,30 @@ public class CashMovementServiceImpl implements CashMovementService {
         return cashMovementRepository.save(cashMovement);
     }
 
+    @Override
+    @Transactional
+    public CashMovement registerSaleCancellationRefund(
+            CashSession cashSession,
+            User user,
+            BigDecimal amount,
+            Long saleCancellationId
+    ) {
+        validateRefundMovement(cashSession, user, amount, saleCancellationId);
+
+        CashMovement cashMovement = CashMovement.builder()
+                .cashSession(cashSession)
+                .createdBy(user)
+                .direction(CashMovementDirection.OUTFLOW)
+                .type(CashMovementType.SALE_CANCELLATION_REFUND)
+                .amount(amount)
+                .description("Reembolso por cancelacion de venta")
+                .sourceType("SALE_CANCELLATION")
+                .sourceId(saleCancellationId)
+                .build();
+
+        return cashMovementRepository.save(cashMovement);
+    }
+
     private CashMovementResponse registerManualMovement(
             ManualCashMovementRequest request,
             AuthenticatedUser authenticatedUser,
