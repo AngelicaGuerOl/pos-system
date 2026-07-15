@@ -25,6 +25,24 @@ export const useSaleDetails = () => {
     }
   }, [])
 
+  const refreshDetails = useCallback(async () => {
+    if (!sale) {
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const data = await saleDependencies.getSaleByIdUseCase.execute(sale.id)
+      setSale(data)
+    } catch (unknownError) {
+      setError(normalizeApiError(unknownError))
+    } finally {
+      setLoading(false)
+    }
+  }, [sale])
+
   const closeDetails = useCallback(() => {
     setOpen(false)
     setSale(null)
@@ -37,6 +55,7 @@ export const useSaleDetails = () => {
     loading,
     open,
     openDetails,
+    refreshDetails,
     sale,
   }
 }

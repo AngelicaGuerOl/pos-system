@@ -1,46 +1,51 @@
 import SyncRoundedIcon from '@mui/icons-material/SyncRounded'
 import { Alert, Button, CircularProgress, Stack, TablePagination } from '@mui/material'
-import { useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ROUTE_PATHS } from '../../../../shared/routes/routePaths'
 import { DataGridShell } from '../../../../shared/ui/components/DataGridShell'
 import { EmptyState } from '../../../../shared/ui/components/EmptyState'
 import { PageHeader } from '../../../../shared/ui/components/PageHeader'
-import { ReceivableDetailDrawer } from '../components/ReceivableDetailDrawer'
-import { ReceivablesFilters } from '../components/ReceivablesFilters'
-import { ReceivablesGrid } from '../components/ReceivablesGrid'
-import { useReceivableDetails } from '../hooks/useReceivableDetails'
+import { AccountsReceivableCustomersTable } from '../components/AccountsReceivableCustomersTable'
+import { AccountsReceivableFilters } from '../components/AccountsReceivableFilters'
+import { useReceivableCustomerContacts } from '../hooks/useReceivableCustomerContacts'
 import { useReceivables } from '../hooks/useReceivables'
+import type { CustomerDebtStatusFilter } from '../types/accountsReceivable'
+import { groupReceivablesByCustomer } from '../utils/accountsReceivable'
 
 export const ReceivablesPage = () => {
+  const navigate = useNavigate()
   const {
-    clearFilters,
     error,
-    filters,
     loading,
-    page,
     receivables,
     refetch,
-    setFilters,
     setPage,
     setSize,
     size,
     totalElements,
+    page,
   } = useReceivables()
-  const receivableDetails = useReceivableDetails()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<CustomerDebtStatusFilter>('OPEN')
+  const customerPhones = useReceivableCustomerContacts(
+    useMemo(() => receivables.map((receivable) => receivable.customerId), [receivables]),
+  )
 
-  useEffect(() => {
-    const id = Number(searchParams.get('id'))
-    if (Number.isFinite(id) && id > 0) {
-      void receivableDetails.openDetails(id)
-      setSearchParams({}, { replace: true })
-    }
-  }, [receivableDetails, searchParams, setSearchParams])
+  const customerRows = useMemo(
+    () => groupReceivablesByCustomer(receivables, status, search, customerPhones),
+    [customerPhones, receivables, search, status],
+  )
+
+  const clearFilters = () => {
+    setSearch('')
+    setStatus('OPEN')
+  }
 
   return (
     <Stack spacing={3}>
       <PageHeader
-        subtitle="Consulta las deudas generadas por ventas fiadas."
+        subtitle="Consulta clientes con compras fiadas y saldos pendientes."
         title="Cuentas por cobrar"
       />
 
@@ -61,33 +66,33 @@ export const ReceivablesPage = () => {
                 Actualizar
               </Button>
             </Stack>
-            <ReceivablesFilters
-              filters={filters}
-              onChange={setFilters}
+            <AccountsReceivableFilters
               onClear={clearFilters}
+              onSearchChange={setSearch}
+              onStatusChange={setStatus}
+              search={search}
+              status={status}
             />
           </Stack>
         }
       >
         <Stack spacing={2}>
           {error ? <Alert severity="error">{error.message}</Alert> : null}
-          {receivableDetails.error ? (
-            <Alert severity="error">{receivableDetails.error.message}</Alert>
-          ) : null}
 
-          {!loading && receivables.length === 0 ? (
+          {!loading && customerRows.length === 0 ? (
             <EmptyState
               actionIcon={<SyncRoundedIcon />}
               actionLabel="Actualizar"
-              message="No hay cuentas por cobrar para mostrar con los filtros actuales."
+              message="No hay clientes para mostrar con los filtros actuales."
               onAction={() => void refetch()}
-              title="Sin cuentas"
+              title="Sin clientes"
             />
           ) : (
-            <ReceivablesGrid
+            <AccountsReceivableCustomersTable
+              customers={customerRows}
               loading={loading}
-              onViewDetails={(receivableId) => void receivableDetails.openDetails(receivableId)}
-              receivables={receivables}
+              onOpenAccount={(customerId) =>
+                navigate(ROUTE_PATHS.customerAccountReceivable.replace(':customerId', String(customerId)))}
             />
           )}
 
@@ -104,18 +109,6 @@ export const ReceivablesPage = () => {
           />
         </Stack>
       </DataGridShell>
-
-      <ReceivableDetailDrawer
-        errorMessage={receivableDetails.error?.message}
-        loading={receivableDetails.loading}
-        onClose={receivableDetails.closeDetails}
-        onPaymentRegistered={async () => {
-          await receivableDetails.refreshDetails()
-          await refetch()
-        }}
-        open={receivableDetails.open}
-        receivable={receivableDetails.receivable}
-      />
     </Stack>
   )
 }

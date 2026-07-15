@@ -1,10 +1,9 @@
 export { ReceivablesPage } from './ui/pages/ReceivablesPage'
+export { CustomerAccountPage } from './ui/pages/CustomerAccountPage'
 
 export type {
   CustomerReceivableFilters,
   Receivable,
-  ReceivableCustomer,
-  ReceivableDetail,
   ReceivableFilters,
   ReceivableStatus,
 } from './domain/entities/Receivable'

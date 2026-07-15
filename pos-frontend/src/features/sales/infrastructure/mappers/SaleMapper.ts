@@ -10,6 +10,7 @@ import type {
   SaleType,
 } from '../../domain/entities/Sale'
 import type { ProductUnit } from '../../../catalog/products'
+import { toEndOfDayISOString, toStartOfDayISOString } from '../../../../shared/utils/dateFilters'
 
 export type BackendSaleItemResponse = {
   id: number
@@ -18,6 +19,9 @@ export type BackendSaleItemResponse = {
   productBarcode: string
   productUnit: ProductUnit
   quantity: number
+  soldQuantity?: number
+  returnedQuantity?: number
+  returnableQuantity?: number
   unitPrice: number
   lineTotal: number
 }
@@ -36,6 +40,7 @@ export type BackendSaleResponse = {
   changeAmount: number | null
   createdAt: string
   cancelledAt?: string | null
+  totalReturnedAmount?: number | null
   receivable: BackendSaleReceivableResponse | null
   items: BackendSaleItemResponse[]
 }
@@ -57,6 +62,8 @@ export type BackendSaleSummaryResponse = {
 export type BackendSaleReceivableResponse = {
   id: number
   originalAmount: number
+  returnedAmount?: number
+  adjustedAmount?: number
   paidAmount: number
   outstandingBalance: number
   status: SaleReceivable['status']
@@ -87,6 +94,7 @@ export const SaleMapper = {
       changeAmount: response.changeAmount === null ? null : Number(response.changeAmount),
       createdAt: response.createdAt,
       cancelledAt: response.cancelledAt ?? null,
+      totalReturnedAmount: Number(response.totalReturnedAmount ?? 0),
       receivable: response.receivable ? SaleMapper.toReceivableEntity(response.receivable) : null,
       items: response.items.map((item) => SaleMapper.toItemEntity(item)),
     }
@@ -112,6 +120,8 @@ export const SaleMapper = {
     return {
       id: response.id,
       originalAmount: Number(response.originalAmount),
+      returnedAmount: Number(response.returnedAmount ?? 0),
+      adjustedAmount: Number(response.adjustedAmount ?? response.originalAmount),
       paidAmount: Number(response.paidAmount),
       outstandingBalance: Number(response.outstandingBalance),
       status: response.status,
@@ -126,6 +136,9 @@ export const SaleMapper = {
       productBarcode: response.productBarcode,
       productUnit: response.productUnit,
       quantity: Number(response.quantity),
+      soldQuantity: Number(response.soldQuantity ?? response.quantity),
+      returnedQuantity: Number(response.returnedQuantity ?? 0),
+      returnableQuantity: Number(response.returnableQuantity ?? response.quantity),
       unitPrice: Number(response.unitPrice),
       lineTotal: Number(response.lineTotal),
     }
@@ -151,8 +164,8 @@ export const SaleMapper = {
       createdByUserId: filters.createdByUserId,
       status: filters.status,
       saleType: filters.saleType,
-      from: filters.from,
-      to: filters.to,
+      from: toStartOfDayISOString(filters.from),
+      to: toEndOfDayISOString(filters.to),
       page: filters.page,
       size: filters.size,
       sort: filters.sort ?? 'createdAt,DESC',

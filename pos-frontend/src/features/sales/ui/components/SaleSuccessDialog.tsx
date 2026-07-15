@@ -17,16 +17,16 @@ type SaleSuccessDialogProps = {
   open: boolean
   sale: Sale | null
   onNewSale: () => void
-  onViewReceivable?: (receivableId: number) => void
+  onViewAccount?: (customerId: number) => void
 }
 
 export const SaleSuccessDialog = ({
   open,
   sale,
   onNewSale,
-  onViewReceivable,
+  onViewAccount,
 }: SaleSuccessDialogProps) => {
-  const receivableId = sale?.receivable?.id
+  const customerId = sale?.customerId
 
   return (
     <Dialog fullWidth maxWidth="xs" onClose={onNewSale} open={open}>
@@ -103,8 +103,8 @@ export const SaleSuccessDialog = ({
         ) : null}
       </DialogContent>
       <DialogActions>
-        {receivableId && onViewReceivable ? (
-          <Button onClick={() => onViewReceivable(receivableId)}>
+        {customerId && sale?.receivable && onViewAccount ? (
+          <Button onClick={() => onViewAccount(customerId)}>
             Ver cuenta por cobrar
           </Button>
         ) : null}

@@ -1,1024 +1,828 @@
-# Documentacion de cambios frontend no subidos
+# Cambios frontend pendientes de subir a GitHub
 
-Este documento resume los cambios pendientes en `pos-frontend` relacionados con ventas fiadas, cuentas por cobrar y abonos. Explica que se agrego o modifico, para que sirve cada archivo y como se conectan las capas de la aplicacion.
+Este documento describe los cambios locales actuales en `pos-frontend` que todavia no estan subidos al repositorio remoto. Los cambios principales son:
 
-## Alcance
+- Soporte visual y funcional para ventas fiadas.
+- Nueva experiencia de cuentas por cobrar por cliente.
+- Registro de abonos a cuentas por cobrar.
+- Flujo de devoluciones parciales y totales dentro del detalle de venta.
+- Reestructuracion del historial y detalle de ventas.
+- Nuevo calendario compartido sin seleccion de hora.
+- Limpieza de drawers, dialogs, hooks y use cases que quedaron obsoletos.
 
-- Se trabajo solo en el frontend React.
-- No se agregaron dependencias nuevas.
-- No se modifico el backend.
-- No se uso Axios directamente desde paginas, componentes ni hooks.
-- Las llamadas HTTP siguen pasando por `httpClient`, repositorios, casos de uso y hooks.
-- Se reutilizaron rutas, layout, guards, `PageResponse`, `normalizeApiError`, componentes compartidos y formatters existentes.
-- No se implemento tarjeta, transferencia, devoluciones, cancelaciones, intereses, impresion, cierre de caja ni frontend para editar o eliminar abonos.
+No se agregaron dependencias nuevas.
 
 ## Resumen funcional
 
-Se agregaron o extendieron tres areas principales:
-
-1. Ventas.
-   - El dialogo de cobro ahora permite elegir `Efectivo` o `Fiado`.
-   - Una venta fiada exige cliente.
-   - Una venta fiada no muestra efectivo recibido ni cambio.
-   - El request de venta fiada envia `saleType = CREDIT`, `customerId` y `cashReceived = null`.
-   - El historial y detalle de ventas muestran `Efectivo` o `Fiado`.
-   - Cuando la venta tiene cuenta por cobrar, se muestra su resumen.
-
-2. Cuentas por cobrar.
-   - Se creo el feature `src/features/receivables`.
-   - Se agrego la ruta `/receivables` para `ADMIN`.
-   - Se agrego listado global paginado con filtros.
-   - Se agrego detalle en Drawer.
-   - Se agrego consulta de cuentas por cobrar por cliente.
-
-3. Abonos.
-   - Se agrego registro de abonos en efectivo desde el Drawer de una cuenta por cobrar.
-   - Se agrego historial paginado de abonos por cuenta.
-   - Se agrego detalle de abono.
-   - Se refresca la cuenta, el listado y la caja despues de un abono.
-   - Si no hay caja abierta, se usa el flujo existente de apertura de caja.
-
-## Arquitectura respetada
-
-Los cambios siguen la arquitectura por feature:
-
-```text
-src/features/{feature}/
-├── application/
-│   └── useCases/
-├── domain/
-│   ├── entities/
-│   └── repositories/
-├── infrastructure/
-│   ├── mappers/
-│   └── RepositoryImpl.ts
-├── ui/
-│   ├── components/
-│   ├── hooks/
-│   └── pages/
-├── dependencies.ts
-└── index.ts
-```
-
-Responsabilidad de cada capa:
-
-- `domain`: tipos de negocio y contratos de repositorio. No contiene React ni HTTP.
-- `application`: casos de uso. Orquestan acciones sobre repositorios.
-- `infrastructure`: implementacion tecnica HTTP y mappers.
-- `ui`: paginas, componentes, dialogs, drawers y hooks.
-- `dependencies.ts`: arma las instancias con inyeccion manual de dependencias.
-- `index.ts`: expone la API publica del feature.
-
-## Endpoints consumidos
-
-El `httpClient` ya usa el `baseURL` del backend, por eso los repositorios llaman rutas sin `/api`.
-
 ### Ventas
 
-- `POST /sales`
-- `GET /sales/current-session`
-- `GET /sales`
-- `GET /sales/{id}`
+- El flujo de venta soporta `CASH` y `CREDIT`.
+- El dialog de cobro permite registrar ventas fiadas.
+- Las respuestas de venta muestran informacion opcional de cuenta por cobrar.
+- El historial de ventas distingue tipo de venta, estado de venta y estado de pago.
+- El detalle de venta ahora usa un `Dialog` grande en lugar de `Drawer`.
+- Las devoluciones se registran dentro del mismo dialog de detalle, sin abrir un segundo modal.
 
 ### Cuentas por cobrar
 
-- `GET /receivables`
-- `GET /receivables/{id}`
-- `GET /customers/{customerId}/receivables`
+- La pagina principal muestra clientes agrupados por deuda, no una fila por venta.
+- El estado de cuenta de un cliente es una pagina completa.
+- El estado de cuenta tiene pestañas:
+  - Compras fiadas.
+  - Abonos.
+- Las compras fiadas se muestran agrupadas por venta y con sus productos visibles directamente.
+- Los abonos se muestran como tabla simple.
+- El registro de abono usa un dialog pequeño.
+- El abono se valida contra el saldo total del cliente y se aplica a las cuentas abiertas.
 
-### Abonos
+### Devoluciones
 
-- `POST /receivables/{receivableId}/payments`
-- `GET /receivables/{receivableId}/payments`
-- `GET /receivable-payments/{paymentId}`
+- Se agrego el modulo frontend `sales/returns`.
+- Permite registrar devoluciones con motivo, articulos y cantidades.
+- Muestra historial de devoluciones dentro del detalle de venta.
+- Actualiza detalle, historial, cuenta por cobrar y caja despues de registrar una devolucion.
 
-## Cambios en ventas
+### Calendarios
 
-Paquete principal:
+- Se agrego un componente compartido `CalendarioPicker`.
+- Se quitaron campos `datetime-local`.
+- Los filtros muestran solo fecha, sin hora.
+- Internamente se convierten fechas a inicio/fin del dia para no romper filtros del backend.
 
-`src/features/sales`
+## Archivos agregados
 
-### `domain/entities/Sale.ts`
+### Cuentas por cobrar
 
-Se extendieron los tipos para soportar ventas en efectivo y fiadas.
+#### `src/features/receivables/ui/pages/CustomerAccountPage.tsx`
 
-Tipos relevantes:
+Pagina completa para el estado de cuenta de un cliente.
 
-- `SaleType = 'CASH' | 'CREDIT'`.
-- `SaleReceivable`, resumen de cuenta por cobrar asociado a una venta.
-- `Sale`, ahora permite:
-  - `customerId: number | null`.
-  - `cashReceived: number | null`.
-  - `changeAmount: number | null`.
-  - `receivable: SaleReceivable | null`.
-- `SaleSummary`, ahora incluye `receivable`.
-- `CreateSaleData`, request unificado para ventas `CASH` y `CREDIT`.
+Sirve para:
 
-Tambien se agregaron traducciones:
+- Mostrar nombre del cliente.
+- Mostrar resumen financiero.
+- Mostrar pestañas de compras fiadas y abonos.
+- Registrar abonos.
+- Refrescar datos despues de un abono.
+- Distribuir un abono entre cuentas abiertas del cliente, empezando por las mas antiguas.
 
-- `CASH` -> `Efectivo`.
-- `CREDIT` -> `Fiado`.
+#### `src/features/receivables/ui/components/AccountsReceivableCustomersTable.tsx`
 
-### `application/useCases/CreateSaleUseCase.ts`
+Tabla de clientes con deuda.
 
-Reemplaza el caso de uso especifico de venta en efectivo.
+Sirve para:
 
-Sirve para crear cualquier venta soportada por el backend:
+- Mostrar clientes agrupados.
+- Mostrar compras fiadas, total abonado y saldo pendiente.
+- Dar acceso directo a `Ver estado de cuenta`.
 
-- Venta en efectivo.
-- Venta fiada.
+#### `src/features/receivables/ui/components/AccountsReceivableFilters.tsx`
 
-### Archivo eliminado: `application/useCases/CreateCashSaleUseCase.ts`
+Filtros simples para cuentas por cobrar.
 
-Se elimino porque el flujo ya no es exclusivamente para ventas en efectivo. La responsabilidad paso a `CreateSaleUseCase`.
+Incluye:
 
-### `domain/repositories/SaleRepository.ts`
+- Busqueda por nombre o telefono.
+- Estado: con saldo, liquidados o todos.
+- Boton limpiar.
 
-Se actualizo el contrato del repositorio para crear ventas usando el modelo general `CreateSaleData`, no solo efectivo.
+Reemplaza filtros tecnicos basados en IDs.
 
-### `infrastructure/SaleRepositoryImpl.ts`
+#### `src/features/receivables/ui/components/CustomerAccountSummary.tsx`
 
-Implementa el request real hacia `POST /sales`.
+Resumen financiero del estado de cuenta.
 
-Reglas importantes:
+Muestra:
 
-- Para venta `CASH`, envia `saleType`, `customerId`, `cashReceived` e `items`.
-- Para venta `CREDIT`, envia `saleType = CREDIT`, `customerId` y `cashReceived = null`.
-- No envia usuario, caja, total, cambio, saldo ni movimientos.
+- Total de compras fiadas.
+- Total abonado.
+- Saldo pendiente.
 
-### `infrastructure/mappers/SaleMapper.ts`
+#### `src/features/receivables/ui/components/CreditSalesTab.tsx`
 
-Mapea respuestas del backend hacia modelos de dominio.
+Pestana de compras fiadas del cliente.
 
-Se agrego soporte para:
+Sirve para:
 
-- `saleType` `CASH` y `CREDIT`.
-- `cashReceived` nullable.
-- `changeAmount` nullable.
-- `receivable` nullable.
-- Resumen de cuenta por cobrar en ventas.
+- Paginar por ventas.
+- Ordenar primero ventas con saldo pendiente.
+- Renderizar cada venta como bloque agrupado.
 
-### `dependencies.ts`
+#### `src/features/receivables/ui/components/CreditSaleGroup.tsx`
 
-Se actualizo la inyeccion de dependencias para usar `CreateSaleUseCase`.
+Bloque visual de una compra fiada.
 
-### `ui/hooks/useCreateSale.ts`
+Agrupa:
 
-Hook nuevo que reemplaza el flujo anterior de `useCreateCashSale`.
+- Encabezado de venta.
+- Tabla de productos de esa venta.
 
-Responsabilidades:
+Evita mezclar productos de varias ventas en una sola tabla plana.
 
-- Ejecutar el caso de uso de creacion de venta.
-- Manejar `loading`.
-- Manejar errores con `normalizeApiError`.
-- Guardar el resultado.
-- Exponer `reset`.
+#### `src/features/receivables/ui/components/CreditSaleHeader.tsx`
 
-### Archivo eliminado: `ui/hooks/useCreateCashSale.ts`
+Encabezado compacto de una venta fiada.
 
-Se elimino porque el hook anterior estaba limitado a efectivo. El nuevo hook soporta efectivo y fiado.
+Muestra:
 
-### `ui/components/CashCheckoutDialog.tsx`
-
-Se extendio el dialogo de cobro.
-
-Cambios:
-
-- Agrega selector de tipo de venta con `ToggleButtonGroup`.
-- Permite elegir:
-  - `Efectivo`.
-  - `Fiado`.
-- Para `Efectivo`:
-  - Muestra campo `Efectivo recibido`.
-  - Muestra cambio estimado.
-  - No exige cliente.
-  - Envia `saleType = CASH`.
-- Para `Fiado`:
-  - Oculta efectivo recibido.
-  - Oculta cambio.
-  - Muestra selector obligatorio de cliente.
-  - Envia `saleType = CREDIT`.
-  - Envia `cashReceived = null`.
-  - Muestra texto indicando que el total quedara como deuda.
-- Bloquea la confirmacion si una venta fiada no tiene cliente.
-
-### `ui/pages/SalesPage.tsx`
-
-Se actualizo el flujo de creacion de venta para usar `useCreateSale`.
-
-Ahora el checkout construye el request segun el tipo de venta:
-
-- `CASH`: efectivo recibido.
-- `CREDIT`: cliente obligatorio y efectivo nulo.
-
-Tambien conserva el carrito, busqueda y flujo de escaneo existentes.
-
-### `ui/components/SaleSuccessDialog.tsx`
-
-Se extendio el resultado de venta exitosa.
-
-Para ventas fiadas muestra informacion devuelta por el backend:
-
-- Folio de venta.
-- Cliente.
+- Folio.
+- Fecha.
+- Estado de cuenta.
 - Total.
-- Estado de cuenta por cobrar.
+- Abonado.
 - Saldo pendiente.
-- Accion opcional para ver la cuenta por cobrar.
 
-Para ventas en efectivo conserva el resumen de cobro.
+#### `src/features/receivables/ui/components/CreditSaleProductsTable.tsx`
 
-### `ui/components/SalesHistoryGrid.tsx`
-
-Se actualizo la tabla de historial para distinguir:
-
-- `CASH` como `Efectivo`.
-- `CREDIT` como `Fiado`.
-
-Tambien muestra informacion relacionada con cuenta por cobrar cuando existe.
-
-### `ui/components/SaleDetailDrawer.tsx`
-
-Se actualizo el detalle de venta.
-
-Para ventas fiadas muestra una seccion de cuenta por cobrar:
-
-- Monto original.
-- Monto pagado.
-- Saldo pendiente.
-- Estado.
-
-Para ventas en efectivo esta seccion no aparece.
-
-### `index.ts`
-
-Exporta los nuevos tipos, hooks y dependencias necesarios del feature de ventas.
-
-## Selector de clientes
-
-### `src/features/customers/ui/components/CustomerSelector.tsx`
-
-Componente nuevo reutilizable para seleccionar clientes.
-
-Responsabilidades:
-
-- Buscar clientes con debounce de 300 ms.
-- Usar el caso de uso existente de customers.
-- Buscar por texto usando el endpoint existente de clientes.
-- Mostrar solo clientes activos.
-- Mostrar nombre y telefono.
-- Permitir limpiar seleccion.
-- Mostrar estado de carga.
-- Mostrar estado vacio.
-- Mostrar errores normalizados.
-
-No crea clientes rapidamente y no duplica repositorios de customers.
-
-### `src/features/customers/index.ts`
-
-Se exporto `CustomerSelector` y tipos necesarios para reutilizarlo desde ventas.
-
-## Integracion con Customers
-
-### `src/features/customers/ui/components/CustomersGrid.tsx`
-
-Se agrego una accion para consultar cuentas por cobrar del cliente.
-
-La accion abre el Drawer de cuentas por cobrar del cliente y reutiliza el feature `receivables`.
-
-### `src/features/customers/ui/pages/CustomersPage.tsx`
-
-Se integro el Drawer de cuentas por cobrar por cliente.
-
-Responsabilidades agregadas:
-
-- Mantener cliente seleccionado.
-- Abrir/cerrar deudas del cliente.
-- Abrir detalle de una cuenta desde el listado del cliente.
-- Refrescar informacion relacionada cuando se registra un abono.
-
-## Feature de cuentas por cobrar
-
-Paquete principal:
-
-`src/features/receivables`
-
-### `domain/entities/Receivable.ts`
-
-Define los modelos de dominio:
-
-- `ReceivableStatus`.
-- `ReceivableCustomer`.
-- `Receivable`.
-- `ReceivableDetail`.
-- `ReceivableFilters`.
-- `CustomerReceivableFilters`.
-
-Tambien define etiquetas:
-
-- `PENDING` -> `Pendiente`.
-- `PARTIALLY_PAID` -> `Parcialmente pagada`.
-- `PAID` -> `Pagada`.
-- `CANCELLED` -> `Cancelada`.
-
-### `domain/repositories/ReceivableRepository.ts`
-
-Contrato del repositorio:
-
-- Consultar historial global.
-- Consultar detalle por ID.
-- Consultar cuentas por cobrar de un cliente.
-
-### Casos de uso
-
-- `application/useCases/GetReceivablesUseCase.ts`
-  - Consulta el historial global.
-- `application/useCases/GetReceivableByIdUseCase.ts`
-  - Consulta el detalle de una cuenta.
-- `application/useCases/GetCustomerReceivablesUseCase.ts`
-  - Consulta deudas por cliente.
-
-### `infrastructure/ReceivableRepositoryImpl.ts`
-
-Implementa las llamadas HTTP:
-
-- `GET /receivables`.
-- `GET /receivables/{id}`.
-- `GET /customers/{customerId}/receivables`.
-
-Usa `httpClient` compartido.
-
-### `infrastructure/mappers/ReceivableMapper.ts`
-
-Convierte respuestas HTTP del backend a modelos de dominio.
-
-Tambien:
-
-- Limpia parametros vacios.
-- Construye parametros de filtros.
-- Mapea `PageResponse`.
-
-### `dependencies.ts`
-
-Registra repositorio y casos de uso del feature:
-
-- `getReceivablesUseCase`.
-- `getReceivableByIdUseCase`.
-- `getCustomerReceivablesUseCase`.
-- Casos de uso de abonos.
-
-### `index.ts`
-
-Exporta la pagina, dependencias, componentes y tipos publicos del feature.
-
-## Pagina global de cuentas por cobrar
-
-### `ui/pages/ReceivablesPage.tsx`
-
-Pagina nueva para `/receivables`.
-
-Responsabilidades:
-
-- Mostrar titulo `Cuentas por cobrar`.
-- Mostrar descripcion.
-- Mostrar filtros.
-- Mostrar tabla con `ReceivablesGrid`.
-- Usar paginacion del backend.
-- Mostrar loading.
-- Mostrar estado vacio.
-- Mostrar errores normalizados.
-- Abrir detalle en Drawer.
-- Soportar apertura directa por query param `?id=`.
-
-Solo debe acceder `ADMIN` por ruta protegida.
-
-### `ui/components/ReceivablesFilters.tsx`
-
-Componente de filtros.
-
-Filtros disponibles:
-
-- Cliente.
-- Venta.
-- Estado.
-- Fecha desde.
-- Fecha hasta.
-
-Al cambiar filtros, el hook reinicia a pagina 0.
-
-### `ui/components/ReceivablesGrid.tsx`
-
-Tabla de cuentas por cobrar usando la infraestructura visual existente.
-
-Columnas principales:
-
-- Folio de deuda.
-- Venta.
-- Fecha.
-- Cliente.
-- Monto original.
-- Pagado.
-- Saldo pendiente.
-- Estado.
-- Accion para ver detalle.
-
-### `ui/components/ReceivableStatusChip.tsx`
-
-Componente visual para mostrar el estado de una cuenta por cobrar con etiquetas en espanol.
-
-### `ui/components/ReceivableDetailDrawer.tsx`
-
-Drawer responsive de detalle de cuenta por cobrar.
+Tabla de productos de una venta fiada.
 
 Muestra:
 
-- ID de cuenta.
-- Folio de venta.
-- Cliente.
-- Fecha de venta.
-- Usuario que registro.
-- Fecha de cuenta.
-- Monto original.
-- Total pagado.
-- Saldo pendiente.
-- Fecha de pago.
-- Estado.
+- Producto.
+- Codigo de barras como texto secundario.
+- Cantidad.
+- Precio historico.
+- Subtotal.
 
-Tambien integra la seccion de abonos:
+No consulta precios actuales del catalogo.
 
-- Boton `Registrar abono`.
-- Historial paginado de abonos.
-- Detalle de abono.
-- Mensajes para cuentas pagadas o canceladas.
+#### `src/features/receivables/ui/components/PaymentsTab.tsx`
 
-El boton de abono solo aparece para:
-
-- `PENDING`.
-- `PARTIALLY_PAID`.
-
-No aparece para:
-
-- `PAID`.
-- `CANCELLED`.
-
-### `ui/components/CustomerReceivablesDrawer.tsx`
-
-Drawer para consultar cuentas por cobrar de un cliente desde el modulo de clientes.
-
-Responsabilidades:
-
-- Consultar `GET /customers/{customerId}/receivables`.
-- Filtrar por estado.
-- Usar paginacion backend.
-- Permitir abrir detalle de una cuenta.
-- Refrescar cuando cambia `refreshKey`.
-
-## Hooks de cuentas por cobrar
-
-### `ui/hooks/useReceivables.ts`
-
-Maneja la pagina global:
-
-- Datos.
-- Filtros.
-- Paginacion.
-- Loading.
-- Error normalizado.
-- Refetch.
-- Limpieza de filtros.
-
-### `ui/hooks/useReceivableDetails.ts`
-
-Maneja el detalle:
-
-- Apertura del Drawer.
-- Consulta por ID.
-- Loading.
-- Error.
-- Cierre.
-- Refresco del detalle.
-
-### `ui/hooks/useCustomerReceivables.ts`
-
-Maneja cuentas por cobrar de cliente:
-
-- Cliente activo.
-- Filtro por estado.
-- Paginacion.
-- Loading.
-- Error normalizado.
-- Refetch.
-
-## Modulo de abonos
-
-Paquete principal:
-
-`src/features/receivables/payment`
-
-### `domain/entities/ReceivablePayment.ts`
-
-Define:
-
-- `ReceivablePayment`.
-- `CreateReceivablePaymentRequest`.
-- `ReceivablePaymentFilters`.
-
-El modelo contiene datos devueltos por backend:
-
-- ID del abono.
-- ID de cuenta por cobrar.
-- ID de venta.
-- ID y nombre del cliente.
-- ID de caja.
-- ID y username de quien recibio.
-- Monto.
-- Notas.
-- Fecha.
-- Saldo pagado acumulado.
-- Saldo pendiente.
-- Estado de la cuenta despues del abono.
-
-### `domain/repositories/ReceivablePaymentRepository.ts`
-
-Contrato del repositorio:
-
-- `createPayment(receivableId, request)`.
-- `getPaymentsByReceivable(receivableId, filters)`.
-- `getPaymentById(paymentId)`.
-
-### Casos de uso
-
-- `application/useCases/CreateReceivablePaymentUseCase.ts`
-  - Registra un abono.
-- `application/useCases/GetReceivablePaymentsUseCase.ts`
-  - Consulta historial paginado de abonos por cuenta.
-- `application/useCases/GetReceivablePaymentByIdUseCase.ts`
-  - Consulta detalle de un abono.
-
-### `infrastructure/ReceivablePaymentRepositoryImpl.ts`
-
-Implementa:
-
-- `POST /receivables/{receivableId}/payments`.
-- `GET /receivables/{receivableId}/payments`.
-- `GET /receivable-payments/{paymentId}`.
-
-No envia datos prohibidos:
-
-- No envia `receivableId` dentro del body.
-- No envia usuario.
-- No envia caja.
-- No envia saldo.
-- No envia estado.
-- No envia `CashMovement`.
-- No envia `sourceType` ni `sourceId`.
-
-### `infrastructure/mappers/ReceivablePaymentMapper.ts`
-
-Responsabilidades:
-
-- Convertir request de dominio a request HTTP.
-- Enviar `notes` como `null` cuando esta vacio.
-- Mapear respuesta HTTP a `ReceivablePayment`.
-- Construir parametros de paginacion.
-- Mapear `PageResponse`.
-
-### `ui/hooks/useCreateReceivablePayment.ts`
-
-Maneja registro de abonos:
-
-- `submit`.
-- `loading`.
-- Error normalizado.
-- Resultado.
-- `reset`.
-- Ultimo error para detectar casos 409 como caja cerrada o saldo cambiado.
-
-### `ui/hooks/useReceivablePayments.ts`
-
-Maneja historial de abonos:
-
-- `receivableId`.
-- Lista paginada.
-- Pagina.
-- Tamano.
-- Total de elementos.
-- Total de paginas.
-- Loading.
-- Error normalizado.
-- Refetch.
-
-Usa orden por defecto `createdAt,DESC`.
-
-### `ui/hooks/useReceivablePaymentDetails.ts`
-
-Maneja detalle de abono:
-
-- ID seleccionado.
-- Apertura/cierre.
-- Consulta por ID.
-- Loading.
-- Error.
-
-### `ui/components/CreateReceivablePaymentDialog.tsx`
-
-Dialog para registrar abono.
-
-Muestra:
-
-- Cliente.
-- Venta.
-- Saldo pendiente.
-- Campo de monto.
-- Campo de notas.
-- Vista previa de saldo restante.
-- Boton `Cancelar`.
-- Boton `Registrar abono`.
-
-Validaciones frontend:
-
-- Monto obligatorio.
-- Monto numerico.
-- Mayor que cero.
-- Maximo dos decimales.
-- No superar saldo pendiente.
-- Notas maximo 255 caracteres.
-- Notas se envian con `trim`.
-- Notas vacias se envian como `null`.
-
-El monto se mantiene como texto durante la edicion y solo se convierte al construir el request.
-
-### `ui/components/ReceivablePaymentsList.tsx`
-
-Lista paginada de abonos dentro del Drawer de cuenta.
+Pestana de abonos.
 
 Muestra:
 
 - Fecha y hora.
 - Monto.
 - Usuario que recibio.
-- Notas.
-- Accion `Ver detalle`.
+- Venta a la que se aplico.
+- Saldo despues.
 
-Usa:
+Se elimino el detalle expandible de abonos y no se muestran IDs tecnicos innecesarios.
 
-- Paginacion backend.
-- Tamanos 5, 10 y 20.
+#### `src/features/receivables/ui/components/RegisterAccountPaymentDialog.tsx`
+
+Dialog para registrar abono.
+
+Sirve para:
+
+- Mostrar cliente y saldo pendiente.
+- Capturar monto.
+- Usar saldo completo.
+- Mostrar vista previa de saldo despues del abono.
+- Validar monto mayor que cero.
+- Validar maximo dos decimales.
+- Evitar montos superiores al saldo pendiente total.
+
+No solicita notas. El frontend envia solo `amount`.
+
+#### `src/features/receivables/ui/hooks/useCustomerAccount.ts`
+
+Hook para cargar el estado de cuenta.
+
+Obtiene:
+
+- Cuentas por cobrar del cliente.
+- Detalle de ventas asociadas.
+- Abonos de las cuentas.
+- Totales del estado de cuenta.
+
+Centraliza carga, error, loading y refetch.
+
+#### `src/features/receivables/ui/hooks/useReceivableCustomerContacts.ts`
+
+Hook auxiliar para obtener telefonos de clientes en la lista de cuentas por cobrar.
+
+Sirve para que la busqueda por telefono funcione en la pagina principal.
+
+#### `src/features/receivables/ui/types/accountsReceivable.ts`
+
+Tipos de UI para cuentas por cobrar.
+
+Define:
+
+- Filtros de estado de deuda.
+- Resumen agrupado por cliente.
+- Relacion entre receivable y venta.
+- Datos del estado de cuenta.
+
+#### `src/features/receivables/ui/utils/accountsReceivable.ts`
+
+Utilidades para cuentas por cobrar.
+
+Incluye:
+
+- Agrupar receivables por cliente.
+- Filtrar por busqueda y estado.
+- Encontrar cuentas abiertas para aplicar abonos.
+
+### Devoluciones de venta
+
+#### `src/features/sales/returns/domain/entities/SaleReturn.ts`
+
+Modelos de dominio de devoluciones.
+
+Define:
+
+- Request de devolucion.
+- Item solicitado.
+- Resumen de devolucion.
+- Detalle de devolucion.
+- Item devuelto.
+- Filtros paginados.
+
+#### `src/features/sales/returns/domain/repositories/SaleReturnRepository.ts`
+
+Contrato del repositorio de devoluciones.
+
+Define:
+
+- Crear devolucion.
+- Consultar devoluciones por venta.
+- Consultar devolucion por ID.
+
+#### `src/features/sales/returns/application/useCases/CreateSaleReturnUseCase.ts`
+
+Caso de uso para registrar devolucion.
+
+Mantiene la arquitectura `UI -> hook -> use case -> repository -> httpClient`.
+
+#### `src/features/sales/returns/application/useCases/GetSaleReturnsUseCase.ts`
+
+Caso de uso para consultar historial paginado de devoluciones de una venta.
+
+#### `src/features/sales/returns/application/useCases/GetSaleReturnByIdUseCase.ts`
+
+Caso de uso para consultar el detalle de una devolucion.
+
+#### `src/features/sales/returns/infrastructure/SaleReturnRepositoryImpl.ts`
+
+Implementacion HTTP de devoluciones.
+
+Consume:
+
+- `POST /sales/{saleId}/returns`.
+- `GET /sales/{saleId}/returns`.
+- `GET /sale-returns/{returnId}`.
+
+Usa `httpClient`; no se usa Axios directamente desde UI.
+
+#### `src/features/sales/returns/infrastructure/mappers/SaleReturnMapper.ts`
+
+Mapea DTOs del backend a modelos de dominio frontend.
+
+Tambien arma requests enviando solo:
+
+- `reason`.
+- `saleItemId`.
+- `quantity`.
+
+No envia totales, precios, usuario, caja, estado ni movimientos.
+
+#### `src/features/sales/returns/ui/hooks/useCreateSaleReturn.ts`
+
+Hook de mutacion para registrar devolucion.
+
+Maneja:
+
 - Loading.
-- Estado vacio.
 - Error normalizado.
+- Resultado.
+- Reset.
+- Ultimo error para flujos como caja no abierta.
 
-### `ui/components/ReceivablePaymentDetailDialog.tsx`
+#### `src/features/sales/returns/ui/hooks/useSaleReturns.ts`
 
-Dialog de detalle de abono.
+Hook para historial paginado de devoluciones por venta.
+
+Maneja:
+
+- Pagina.
+- Tamano.
+- Total de elementos.
+- Loading.
+- Error.
+- Refetch.
+
+#### `src/features/sales/returns/ui/hooks/useSaleReturnDetails.ts`
+
+Hook para cargar detalle de una devolucion cuando se expande en el historial.
+
+#### `src/features/sales/returns/ui/hooks/useSaleReturnForm.ts`
+
+Hook de estado del formulario de devolucion.
+
+Maneja:
+
+- Articulos seleccionados.
+- Cantidades.
+- Motivo.
+- Validaciones.
+- Resumen estimado.
+- Request final.
+
+#### `src/features/sales/returns/ui/utils/returnQuantity.ts`
+
+Utilidades para cantidades de devolucion.
+
+Sirve para:
+
+- Calcular cantidad inicial.
+- Limitar cantidad entre minimo y maximo.
+- Elegir incrementos apropiados segun unidad/cantidad.
+
+### Detalle de venta y devoluciones
+
+#### `src/features/sales/ui/components/SaleDetailsDialog.tsx`
+
+Dialog principal de detalle de venta.
+
+Reemplaza el drawer anterior.
+
+Tiene dos modos internos:
+
+- `DETAIL`: consulta de venta.
+- `RETURN`: formulario de devolucion.
+
+Responsabilidades:
+
+- Mostrar encabezado de venta.
+- Mostrar resumen compacto.
+- Mostrar articulos.
+- Mostrar historial de devoluciones.
+- Cambiar a modo devolucion sin abrir otro dialog.
+- Validar caja abierta cuando una devolucion genera reembolso.
+- Registrar devolucion.
+- Refrescar detalle, historial y caja.
+
+#### `src/features/sales/ui/components/details/SaleDetailsSummary.tsx`
+
+Resumen visual compacto del detalle de venta.
 
 Muestra:
 
-- ID del abono.
-- Fecha.
+- Tipo de venta.
+- Estado de venta.
+- Estado de pago cuando aplica.
 - Cliente.
-- Venta asociada.
-- Monto.
-- Notas.
-- Usuario que recibio.
-- Sesion de caja.
-- Saldo pagado acumulado despues del abono.
-- Saldo pendiente despues del abono.
-- Estado de la cuenta despues del abono.
+- Cajero.
+- Total.
+- Saldo pendiente cuando aplica.
 
-No incluye acciones para editar ni eliminar.
+Evita datos nulos, guiones y campos repetidos.
 
-## Integracion con CashSession
+#### `src/features/sales/ui/components/details/SaleItemsTable.tsx`
 
-La pagina de cuentas por cobrar no esta protegida completa por caja abierta.
+Tabla de articulos vendidos en modo detalle.
 
-Solo al presionar `Registrar abono`:
+Muestra:
 
-1. Se refresca la caja actual con `useCashSession`.
-2. Si hay caja abierta, se abre el dialogo.
-3. Si no hay caja abierta, se muestra mensaje y navega a apertura de caja.
-4. Se conserva retorno seguro usando `location`.
+- Producto.
+- Cantidad.
+- Precio.
+- Subtotal.
 
-Si el backend responde `409` por caja no abierta:
+Usa datos historicos de la venta.
 
-- Se cierra el dialogo.
-- Se refresca la caja.
-- Se muestra mensaje claro.
-- Se redirige al flujo existente de apertura.
+#### `src/features/sales/ui/components/details/SaleReturnForm.tsx`
 
-Despues de un abono exitoso:
+Formulario visual de devolucion dentro del mismo dialog.
 
-- Se cierra el dialogo.
-- Se muestra Snackbar.
-- Se refresca el historial de abonos.
-- Se refresca el detalle de la cuenta.
-- Se refresca el listado global cuando esta abierto.
-- Se refresca el contexto de caja.
-- Se mantiene abierto el Drawer principal.
+Muestra:
 
-## Rutas y menu
+- Checkbox por articulo.
+- Producto.
+- Precio.
+- Cantidad a devolver.
+- Subtotal.
+- Motivo.
+- Resumen.
 
-### `src/shared/routes/routePaths.ts`
+No abre otro modal.
 
-Se agrego:
+#### `src/features/sales/ui/components/details/ReturnQuantityControl.tsx`
 
-```ts
-receivables: '/receivables'
-```
+Control compacto de cantidad:
 
-### `src/app/router/routes.tsx`
+`[-] cantidad [+]`
 
-Se agrego la ruta:
+Respeta:
 
-```text
-/receivables
-```
+- Minimo 1 si el articulo esta seleccionado.
+- Maximo `returnableQuantity`.
+- Sin botones cuando la cantidad maxima es 1.
 
-Proteccion:
+#### `src/features/sales/ui/components/details/SaleReturnsSection.tsx`
 
-- Solo `ADMIN`.
+Seccion de devoluciones registradas.
 
-Tambien se mantiene:
+Muestra:
 
-- Ventas protegidas por caja abierta.
-- Historial de ventas para `ADMIN` y `CASHIER`.
-- Apertura de caja fuera de `RequireOpenCashSession`.
+- Estado vacio cuando no hay devoluciones.
+- Accordions compactos.
+- Detalle de devolucion dentro de la misma seccion.
+- Paginacion simple cuando aplica.
 
-### `src/shared/ui/layout/DashboardLayout.tsx`
+### Shared
 
-Se agrego opcion de menu:
+#### `src/shared/ui/components/CalendarioPicker.tsx`
 
-```text
-Cuentas por cobrar
-```
+Componente compartido para seleccionar fechas sin hora.
 
-Ubicacion:
+Props principales:
 
-- Grupo `Ventas`.
+- `label`.
+- `value`.
+- `onChange`.
+- `error`.
+- `helperText`.
+- `mayorDeEdad`.
+- `sx`.
 
-Visibilidad:
+Usa `TextField type="date"` porque el proyecto no tiene `@mui/x-date-pickers` ni `dayjs`.
 
-- Solo `ADMIN`.
+#### `src/shared/utils/dateFilters.ts`
 
-Icono:
+Utilidades para filtros de fecha.
 
-- `RequestQuoteRoundedIcon`.
+Convierte fechas `YYYY-MM-DD` a:
 
-## Permisos frontend
+- Inicio del dia para `from`.
+- Fin del dia para `to`.
 
-### ADMIN
-
-Puede:
-
-- Registrar venta en efectivo.
-- Registrar venta fiada.
-- Ver historial global de cuentas por cobrar.
-- Ver detalle de cuenta.
-- Ver cuentas por cliente.
-- Ver abonos.
-- Registrar abonos si tiene caja abierta.
-- Ver detalle de abono.
-
-### CASHIER
-
-Puede:
-
-- Registrar venta en efectivo.
-- Registrar venta fiada.
-- Ver historial de ventas permitido.
-- Ver cuentas por cliente.
-- Ver detalle de cuenta si backend lo permite.
-- Ver abonos si backend lo permite.
-- Registrar abonos si tiene caja abierta.
-
-No puede acceder al historial global `/receivables` porque la ruta esta protegida para `ADMIN`.
-
-El backend sigue siendo la autoridad final.
-
-## Manejo de errores
-
-Se usa `normalizeApiError` en hooks y componentes que consultan API.
-
-Casos contemplados:
-
-- Cliente obligatorio para fiado.
-- Caja no abierta.
-- Stock insuficiente.
-- Cuenta por cobrar inexistente.
-- Abono inexistente.
-- Acceso prohibido.
-- Monto invalido.
-- Cuenta pagada.
-- Cuenta cancelada.
-- Abono mayor al saldo.
-- Saldo cambiado por concurrencia.
-- Errores de red.
-
-No se usa `alert()` y no se muestran objetos Axios.
-
-## Archivos creados
-
-### Customers
-
-- `src/features/customers/ui/components/CustomerSelector.tsx`
-
-### Receivables
-
-- `src/features/receivables/index.ts`
-- `src/features/receivables/dependencies.ts`
-- `src/features/receivables/domain/entities/Receivable.ts`
-- `src/features/receivables/domain/repositories/ReceivableRepository.ts`
-- `src/features/receivables/application/useCases/GetReceivablesUseCase.ts`
-- `src/features/receivables/application/useCases/GetReceivableByIdUseCase.ts`
-- `src/features/receivables/application/useCases/GetCustomerReceivablesUseCase.ts`
-- `src/features/receivables/infrastructure/ReceivableRepositoryImpl.ts`
-- `src/features/receivables/infrastructure/mappers/ReceivableMapper.ts`
-- `src/features/receivables/ui/pages/ReceivablesPage.tsx`
-- `src/features/receivables/ui/components/ReceivablesGrid.tsx`
-- `src/features/receivables/ui/components/ReceivablesFilters.tsx`
-- `src/features/receivables/ui/components/ReceivableDetailDrawer.tsx`
-- `src/features/receivables/ui/components/ReceivableStatusChip.tsx`
-- `src/features/receivables/ui/components/CustomerReceivablesDrawer.tsx`
-- `src/features/receivables/ui/hooks/useReceivables.ts`
-- `src/features/receivables/ui/hooks/useReceivableDetails.ts`
-- `src/features/receivables/ui/hooks/useCustomerReceivables.ts`
-
-### Receivable payments
-
-- `src/features/receivables/payment/domain/entities/ReceivablePayment.ts`
-- `src/features/receivables/payment/domain/repositories/ReceivablePaymentRepository.ts`
-- `src/features/receivables/payment/application/useCases/CreateReceivablePaymentUseCase.ts`
-- `src/features/receivables/payment/application/useCases/GetReceivablePaymentsUseCase.ts`
-- `src/features/receivables/payment/application/useCases/GetReceivablePaymentByIdUseCase.ts`
-- `src/features/receivables/payment/infrastructure/ReceivablePaymentRepositoryImpl.ts`
-- `src/features/receivables/payment/infrastructure/mappers/ReceivablePaymentMapper.ts`
-- `src/features/receivables/payment/ui/components/CreateReceivablePaymentDialog.tsx`
-- `src/features/receivables/payment/ui/components/ReceivablePaymentsList.tsx`
-- `src/features/receivables/payment/ui/components/ReceivablePaymentDetailDialog.tsx`
-- `src/features/receivables/payment/ui/hooks/useCreateReceivablePayment.ts`
-- `src/features/receivables/payment/ui/hooks/useReceivablePayments.ts`
-- `src/features/receivables/payment/ui/hooks/useReceivablePaymentDetails.ts`
-
-### Sales
-
-- `src/features/sales/application/useCases/CreateSaleUseCase.ts`
-- `src/features/sales/ui/hooks/useCreateSale.ts`
+Permite quitar horas de la UI sin romper endpoints que esperan fechas con hora.
 
 ## Archivos modificados
 
-- `src/app/router/routes.tsx`
-- `src/features/customers/index.ts`
-- `src/features/customers/ui/components/CustomersGrid.tsx`
-- `src/features/customers/ui/pages/CustomersPage.tsx`
-- `src/features/sales/dependencies.ts`
-- `src/features/sales/domain/entities/Sale.ts`
-- `src/features/sales/domain/repositories/SaleRepository.ts`
-- `src/features/sales/index.ts`
-- `src/features/sales/infrastructure/SaleRepositoryImpl.ts`
-- `src/features/sales/infrastructure/mappers/SaleMapper.ts`
-- `src/features/sales/ui/components/CashCheckoutDialog.tsx`
-- `src/features/sales/ui/components/SaleDetailDrawer.tsx`
-- `src/features/sales/ui/components/SaleSuccessDialog.tsx`
-- `src/features/sales/ui/components/SalesHistoryGrid.tsx`
-- `src/features/sales/ui/pages/SalesPage.tsx`
-- `src/shared/routes/routePaths.ts`
-- `src/shared/ui/layout/DashboardLayout.tsx`
+### Rutas y navegacion
 
-## Archivos eliminados
+#### `src/shared/routes/routePaths.ts`
 
-- `src/features/sales/application/useCases/CreateCashSaleUseCase.ts`
-- `src/features/sales/ui/hooks/useCreateCashSale.ts`
+Agrega rutas para cuentas por cobrar:
 
-Se eliminaron porque la creacion de ventas ya no es exclusivamente en efectivo. El flujo general quedo en `CreateSaleUseCase` y `useCreateSale`.
+- `/receivables`.
+- `/sales/accounts-receivable/customers/:customerId`.
 
-## Flujos principales
+#### `src/app/router/routes.tsx`
 
-### Venta en efectivo
+Registra:
 
-```text
-SalesPage
-  -> CashCheckoutDialog con saleType CASH
-  -> useCreateSale
-  -> CreateSaleUseCase
-  -> SaleRepository.createSale
-  -> SaleRepositoryImpl.post('/sales')
-  -> SaleMapper.toEntity
-```
+- Pagina principal de cuentas por cobrar.
+- Pagina de estado de cuenta de cliente.
 
-Request esperado:
+Mantiene protecciones de rol existentes.
 
-```json
-{
-  "saleType": "CASH",
-  "customerId": null,
-  "cashReceived": 400,
-  "items": [
-    {
-      "productId": 1,
-      "quantity": 2
-    }
-  ]
-}
-```
+### Clientes
 
-### Venta fiada
+#### `src/features/customers/ui/pages/CustomersPage.tsx`
 
-```text
-SalesPage
-  -> CashCheckoutDialog con saleType CREDIT
-  -> CustomerSelector
-  -> useCreateSale
-  -> CreateSaleUseCase
-  -> SaleRepository.createSale
-  -> SaleRepositoryImpl.post('/sales')
-  -> SaleMapper.toEntity
-  -> SaleSuccessDialog con receivable
-```
+Integra acceso al estado de cuenta del cliente.
 
-Request esperado:
+Permite navegar desde clientes hacia la gestion de cuentas por cobrar sin duplicar la funcionalidad dentro del modulo de clientes.
 
-```json
-{
-  "saleType": "CREDIT",
-  "customerId": 15,
-  "cashReceived": null,
-  "items": [
-    {
-      "productId": 1,
-      "quantity": 2
-    }
-  ]
-}
-```
+### Inventario
 
-### Historial global de cuentas por cobrar
+#### `src/features/inventory/movement/domain/entities/InventoryMovement.ts`
 
-```text
-ReceivablesPage
-  -> useReceivables
-  -> GetReceivablesUseCase
-  -> ReceivableRepository.getReceivables
-  -> ReceivableRepositoryImpl.get('/receivables')
-  -> ReceivableMapper.toPage
-  -> ReceivablesGrid
-```
+Agrega tipo frontend:
 
-### Cuentas por cobrar por cliente
+- `SALE_RETURN`.
 
-```text
-CustomersPage
-  -> CustomerReceivablesDrawer
-  -> useCustomerReceivables
-  -> GetCustomerReceivablesUseCase
-  -> ReceivableRepository.getCustomerReceivables
-  -> ReceivableRepositoryImpl.get('/customers/{customerId}/receivables')
-  -> ReceivablesGrid
-```
+Etiqueta:
 
-### Registrar abono
+- `Devolucion de venta`.
 
-```text
-ReceivableDetailDrawer
-  -> refreshCurrentSession
-  -> CreateReceivablePaymentDialog
-  -> useCreateReceivablePayment
-  -> CreateReceivablePaymentUseCase
-  -> ReceivablePaymentRepository.createPayment
-  -> ReceivablePaymentRepositoryImpl.post('/receivables/{id}/payments')
-  -> ReceivablePaymentMapper.toEntity
-  -> refetch detalle, historial y caja
-```
+Evita que la UI muestre el valor tecnico `SALE_RETURN`.
 
-Request esperado:
+#### `src/features/inventory/movement/infrastructure/InventoryMovementRepositoryImpl.ts`
 
-```json
-{
-  "amount": 300,
-  "notes": "Abono semanal"
-}
-```
+Actualiza conversion de fechas.
 
-## Verificacion local
+Ahora usa:
 
-Este documento solo agrega documentacion. No se ejecutaron `npm run build` ni `npm run lint` durante esta tarea de documentacion.
+- `toStartOfDayISOString`.
+- `toEndOfDayISOString`.
 
-Para verificar el frontend completo:
+#### `src/features/inventory/movement/ui/components/InventoryMovementFilters.tsx`
+
+Reemplaza campos `datetime-local` por `CalendarioPicker`.
+
+La UI ya no pide hora en filtros.
+
+### Cuentas por cobrar
+
+#### `src/features/receivables/dependencies.ts`
+
+Actualiza dependencias disponibles para el nuevo flujo:
+
+- Listado global.
+- Cuentas por cliente.
+- Crear abono.
+- Consultar abonos por cuenta.
+
+Elimina dependencias de detalle global que ya no se usan en la UI.
+
+#### `src/features/receivables/domain/entities/Receivable.ts`
+
+Agrega campos:
+
+- `returnedAmount`.
+- `adjustedAmount`.
+
+Permite mostrar deudas afectadas por devoluciones.
+
+#### `src/features/receivables/domain/repositories/ReceivableRepository.ts`
+
+Conserva solo operaciones necesarias para el nuevo flujo:
+
+- Obtener cuentas por cobrar globales.
+- Obtener cuentas por cliente.
+
+#### `src/features/receivables/infrastructure/ReceivableRepositoryImpl.ts`
+
+Actualiza implementacion HTTP para el nuevo repositorio.
+
+#### `src/features/receivables/infrastructure/mappers/ReceivableMapper.ts`
+
+Mapea nuevos campos:
+
+- `returnedAmount`.
+- `adjustedAmount`.
+
+Tambien limpia parametros vacios en filtros.
+
+#### `src/features/receivables/index.ts`
+
+Actualiza exports publicos para rutas y modelos usados por otros features.
+
+#### `src/features/receivables/ui/pages/ReceivablesPage.tsx`
+
+Reestructura la pagina principal.
+
+Antes mostraba cuentas por cobrar individuales.
+
+Ahora muestra clientes agrupados con:
+
+- Compras fiadas.
+- Total abonado.
+- Saldo pendiente.
+- Estado.
+- Accion para ver estado de cuenta.
+
+### Abonos
+
+#### `src/features/receivables/payment/domain/entities/ReceivablePayment.ts`
+
+Define modelo de abono usado en UI.
+
+Se elimino `notes` del modelo frontend porque ya no se solicita ni se muestra.
+
+#### `src/features/receivables/payment/domain/repositories/ReceivablePaymentRepository.ts`
+
+Mantiene operaciones necesarias:
+
+- Crear abono.
+- Consultar abonos por cuenta.
+
+Se elimino consulta de detalle individual porque la UI ya no abre dialog separado de abono.
+
+#### `src/features/receivables/payment/infrastructure/ReceivablePaymentRepositoryImpl.ts`
+
+Implementa endpoints de abono:
+
+- `POST /receivables/{receivableId}/payments`.
+- `GET /receivables/{receivableId}/payments`.
+
+#### `src/features/receivables/payment/infrastructure/mappers/ReceivablePaymentMapper.ts`
+
+Mapea abonos.
+
+El request ahora envia solo:
+
+- `amount`.
+
+No envia `notes`.
+
+### Ventas
+
+#### `src/features/sales/dependencies.ts`
+
+Registra dependencias del modulo de devoluciones:
+
+- Crear devolucion.
+- Consultar devoluciones.
+- Consultar detalle de devolucion.
+
+#### `src/features/sales/domain/entities/Sale.ts`
+
+Agrega modelos y estados necesarios para:
+
+- Venta fiada.
+- Cuenta por cobrar en venta.
+- Estados `PARTIALLY_RETURNED` y `RETURNED`.
+- Cantidades devueltas y disponibles por item.
+
+#### `src/features/sales/infrastructure/mappers/SaleMapper.ts`
+
+Mapea:
+
+- `receivable`.
+- `returnedAmount`.
+- `adjustedAmount`.
+- `totalReturnedAmount`.
+- `soldQuantity`.
+- `returnedQuantity`.
+- `returnableQuantity`.
+
+Tambien convierte filtros de fecha con inicio/fin de dia.
+
+#### `src/features/sales/index.ts`
+
+Exporta tipos publicos de ventas y devoluciones.
+
+#### `src/features/sales/ui/hooks/useSaleDetails.ts`
+
+Actualiza carga de detalle para usarse con el nuevo dialog.
+
+#### `src/features/sales/ui/pages/SalesHistoryPage.tsx`
+
+Integra `SaleDetailsDialog`.
+
+Despues de registrar una devolucion:
+
+- Refresca detalle.
+- Refresca historial.
+
+#### `src/features/sales/ui/components/SalesHistoryGrid.tsx`
+
+Mejora tabla de historial.
+
+Cambios:
+
+- Columnas mas compactas.
+- Menos necesidad de scroll horizontal.
+- Oculta columnas secundarias en pantallas pequenas.
+- Muestra accion `Ver detalle`.
+- Muestra estado de pago cuando aplica.
+
+#### `src/features/sales/ui/components/SalesHistoryFilters.tsx`
+
+Reemplaza fechas con `CalendarioPicker`.
+
+Los filtros ya no muestran hora.
+
+#### `src/features/sales/ui/components/SaleSuccessDialog.tsx`
+
+Actualiza resultado de venta para mostrar informacion de cuenta por cobrar cuando la venta es fiada.
+
+#### `src/features/sales/ui/pages/SalesPage.tsx`
+
+Integra venta fiada y flujo de cliente obligatorio para credito.
+
+Mantiene venta de contado.
+
+## Archivos eliminados u obsoletos
+
+### Ventas
+
+#### `src/features/sales/ui/components/SaleDetailDrawer.tsx`
+
+Eliminado porque el detalle de venta ahora se muestra en `SaleDetailsDialog`.
+
+### Cuentas por cobrar
+
+#### `src/features/receivables/application/useCases/GetReceivableByIdUseCase.ts`
+
+Eliminado porque la UI ya no consulta detalle global de una cuenta en drawer/dialog.
+
+#### `src/features/receivables/ui/components/CustomerReceivablesDrawer.tsx`
+
+Eliminado porque el estado de cuenta del cliente ahora es pagina completa.
+
+#### `src/features/receivables/ui/components/ReceivableDetailDrawer.tsx`
+
+Eliminado porque ya no se usa drawer para detalle de cuenta por cobrar.
+
+#### `src/features/receivables/ui/components/ReceivablesFilters.tsx`
+
+Eliminado porque fue reemplazado por `AccountsReceivableFilters`.
+
+#### `src/features/receivables/ui/components/ReceivablesGrid.tsx`
+
+Eliminado porque fue reemplazado por `AccountsReceivableCustomersTable`.
+
+#### `src/features/receivables/ui/hooks/useCustomerReceivables.ts`
+
+Eliminado porque el estado de cuenta usa `useCustomerAccount`.
+
+#### `src/features/receivables/ui/hooks/useReceivableDetails.ts`
+
+Eliminado porque ya no existe drawer/dialog de detalle individual de receivable.
+
+### Abonos
+
+#### `src/features/receivables/payment/application/useCases/GetReceivablePaymentByIdUseCase.ts`
+
+Eliminado porque la UI ya no abre detalle individual de abono.
+
+#### `src/features/receivables/payment/ui/components/CreateReceivablePaymentDialog.tsx`
+
+Eliminado porque el nuevo dialog de abono del estado de cuenta es `RegisterAccountPaymentDialog`.
+
+#### `src/features/receivables/payment/ui/components/ReceivablePaymentDetailDialog.tsx`
+
+Eliminado porque ya no se consulta detalle individual de abono.
+
+#### `src/features/receivables/payment/ui/components/ReceivablePaymentsList.tsx`
+
+Eliminado porque la pestana `PaymentsTab` muestra los abonos.
+
+#### `src/features/receivables/payment/ui/hooks/useReceivablePaymentDetails.ts`
+
+Eliminado porque no hay detalle individual de abono.
+
+#### `src/features/receivables/payment/ui/hooks/useReceivablePayments.ts`
+
+Eliminado porque `useCustomerAccount` centraliza la carga de abonos del estado de cuenta.
+
+## Flujo final de ventas y devoluciones
+
+1. Usuario entra a historial de ventas.
+2. Presiona `Ver detalle`.
+3. Se abre `SaleDetailsDialog`.
+4. En modo detalle se ve resumen, articulos y devoluciones.
+5. Si la venta permite devolucion, aparece `Devolver articulos`.
+6. El mismo dialog cambia a modo devolucion.
+7. Usuario selecciona articulos y cantidades.
+8. Ingresa motivo.
+9. Confirma devolucion.
+10. Frontend envia solo `reason`, `saleItemId` y `quantity`.
+11. Backend responde.
+12. Frontend refresca detalle, historial, devoluciones, caja y cuenta por cobrar cuando aplica.
+
+## Flujo final de cuentas por cobrar
+
+1. Usuario entra a cuentas por cobrar.
+2. Ve clientes agrupados por deuda.
+3. Filtra por nombre, telefono o estado.
+4. Abre estado de cuenta del cliente.
+5. Ve resumen financiero.
+6. Consulta compras fiadas agrupadas por venta.
+7. Consulta abonos.
+8. Registra abono.
+9. Frontend valida monto contra saldo total.
+10. Frontend aplica el monto a cuentas abiertas usando endpoints existentes.
+11. Refresca estado de cuenta.
+
+## Endpoints consumidos nuevos o ajustados
+
+### Devoluciones
+
+- `POST /sales/{saleId}/returns`.
+- `GET /sales/{saleId}/returns`.
+- `GET /sale-returns/{returnId}`.
+
+### Cuentas por cobrar
+
+- `GET /receivables`.
+- `GET /customers/{customerId}/receivables`.
+
+### Abonos
+
+- `POST /receivables/{receivableId}/payments`.
+- `GET /receivables/{receivableId}/payments`.
+
+### Ventas
+
+- `POST /sales`.
+- `GET /sales`.
+- `GET /sales/current-session`.
+- `GET /sales/{id}`.
+
+## Verificacion ejecutada
+
+Se ejecuto:
 
 ```bash
+cd pos-frontend
 npm run build
 npm run lint
 ```
 
+Resultado:
+
+- `npm run build`: correcto.
+- `npm run lint`: correcto.
+
+Nota: Vite muestra una advertencia no bloqueante por tamano de bundle mayor a 500 kB.
+
 ## Confirmaciones
 
-- No se agregaron dependencias.
-- No se modifico el backend.
-- No se uso Axios directo en UI.
-- No se crearon datos simulados.
-- No se implemento tarjeta ni transferencia.
-- No se implemento edicion ni eliminacion de abonos.
-- No se implementaron devoluciones.
-- No se implementaron cancelaciones.
-- No se implementaron intereses.
+- No se agregaron dependencias nuevas.
+- No se modifico el backend desde estos cambios de frontend.
 - No se implemento impresion.
 - No se implemento cierre de caja.
+- No se implemento edicion o eliminacion de devoluciones.
+- No se implemento cancelacion de devoluciones.
+- No se implemento pago con tarjeta o transferencia.
+

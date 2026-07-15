@@ -2,19 +2,9 @@ import type { PageResponse } from '../../../../shared/types/PageResponse'
 import type {
   CustomerReceivableFilters,
   Receivable,
-  ReceivableCustomer,
-  ReceivableDetail,
   ReceivableFilters,
   ReceivableStatus,
 } from '../../domain/entities/Receivable'
-
-export type BackendReceivableCustomerResponse = {
-  id: number
-  firstName: string
-  lastName: string
-  fullName: string
-  phone: string | null
-}
 
 export type BackendReceivableResponse = {
   id: number
@@ -22,19 +12,13 @@ export type BackendReceivableResponse = {
   customerId: number
   customerFullName: string
   originalAmount: number
+  returnedAmount?: number
+  adjustedAmount?: number
   paidAmount: number
   outstandingBalance: number
   status: ReceivableStatus
   createdAt: string
   paidAt: string | null
-}
-
-export type BackendReceivableDetailResponse = BackendReceivableResponse & {
-  folio: number
-  registeredByUserId: number
-  registeredByUsername: string
-  saleCreatedAt: string
-  customer: BackendReceivableCustomerResponse
 }
 
 const toParams = (
@@ -58,32 +42,13 @@ export const ReceivableMapper = {
       customerId: response.customerId,
       customerFullName: response.customerFullName,
       originalAmount: Number(response.originalAmount),
+      returnedAmount: Number(response.returnedAmount ?? 0),
+      adjustedAmount: Number(response.adjustedAmount ?? response.originalAmount),
       paidAmount: Number(response.paidAmount),
       outstandingBalance: Number(response.outstandingBalance),
       status: response.status,
       createdAt: response.createdAt,
       paidAt: response.paidAt ?? null,
-    }
-  },
-
-  toDetailEntity(response: BackendReceivableDetailResponse): ReceivableDetail {
-    return {
-      ...ReceivableMapper.toEntity(response),
-      folio: response.folio,
-      registeredByUserId: response.registeredByUserId,
-      registeredByUsername: response.registeredByUsername,
-      saleCreatedAt: response.saleCreatedAt,
-      customer: ReceivableMapper.toCustomerEntity(response.customer),
-    }
-  },
-
-  toCustomerEntity(response: BackendReceivableCustomerResponse): ReceivableCustomer {
-    return {
-      id: response.id,
-      firstName: response.firstName,
-      lastName: response.lastName,
-      fullName: response.fullName,
-      phone: response.phone,
     }
   },
 

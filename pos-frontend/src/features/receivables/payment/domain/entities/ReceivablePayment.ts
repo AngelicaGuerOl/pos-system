@@ -10,7 +10,6 @@ export type ReceivablePayment = {
   receivedById: number
   receivedByUsername: string
   amount: number
-  notes: string | null
   createdAt: string
   paidAmount: number
   outstandingBalance: number
@@ -19,7 +18,6 @@ export type ReceivablePayment = {
 
 export type CreateReceivablePaymentRequest = {
   amount: number
-  notes?: string | null
 }
 
 export type ReceivablePaymentFilters = {

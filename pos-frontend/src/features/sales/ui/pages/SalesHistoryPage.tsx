@@ -3,7 +3,7 @@ import { Alert, Button, CircularProgress, Stack, TablePagination } from '@mui/ma
 import { DataGridShell } from '../../../../shared/ui/components/DataGridShell'
 import { EmptyState } from '../../../../shared/ui/components/EmptyState'
 import { PageHeader } from '../../../../shared/ui/components/PageHeader'
-import { SaleDetailDrawer } from '../components/SaleDetailDrawer'
+import { SaleDetailsDialog } from '../components/SaleDetailsDialog'
 import { SalesHistoryFilters } from '../components/SalesHistoryFilters'
 import { SalesHistoryGrid } from '../components/SalesHistoryGrid'
 import { useSaleDetails } from '../hooks/useSaleDetails'
@@ -104,10 +104,14 @@ export const SalesHistoryPage = () => {
         </Stack>
       </DataGridShell>
 
-      <SaleDetailDrawer
+      <SaleDetailsDialog
         errorMessage={saleDetails.error?.message}
         loading={saleDetails.loading}
         onClose={saleDetails.closeDetails}
+        onReturnRegistered={async () => {
+          await saleDetails.refreshDetails()
+          await refetch()
+        }}
         open={saleDetails.open}
         sale={saleDetails.sale}
       />

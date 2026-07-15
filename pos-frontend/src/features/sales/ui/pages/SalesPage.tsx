@@ -19,8 +19,6 @@ import { useAuth } from '../../../auth'
 import { useCashSession } from '../../../cash/session'
 import type { Product } from '../../../catalog/products'
 import type { Customer } from '../../../customers'
-import { ReceivableDetailDrawer } from '../../../receivables/ui/components/ReceivableDetailDrawer'
-import { useReceivableDetails } from '../../../receivables/ui/hooks/useReceivableDetails'
 import { ROUTE_PATHS } from '../../../../shared/routes/routePaths'
 import { ConfirmDialog } from '../../../../shared/ui/components/ConfirmDialog'
 import { DataGridShell } from '../../../../shared/ui/components/DataGridShell'
@@ -65,7 +63,6 @@ export const SalesPage = () => {
   const cart = useSaleCart()
   const productLookup = useProductLookup()
   const createSale = useCreateSale()
-  const receivableDetails = useReceivableDetails()
   const [searchOpen, setSearchOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [clearCartOpen, setClearCartOpen] = useState(false)
@@ -377,20 +374,10 @@ export const SalesPage = () => {
           setLastSale(null)
           scannerRef.current?.focus()
         }}
-        onViewReceivable={(receivableId) => void receivableDetails.openDetails(receivableId)}
+        onViewAccount={(customerId) =>
+          navigate(ROUTE_PATHS.customerAccountReceivable.replace(':customerId', String(customerId)))}
         open={Boolean(lastSale)}
         sale={lastSale}
-      />
-
-      <ReceivableDetailDrawer
-        errorMessage={receivableDetails.error?.message}
-        loading={receivableDetails.loading}
-        onClose={receivableDetails.closeDetails}
-        onPaymentRegistered={async () => {
-          await receivableDetails.refreshDetails()
-        }}
-        open={receivableDetails.open}
-        receivable={receivableDetails.receivable}
       />
 
       <ConfirmDialog

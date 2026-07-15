@@ -14,5 +14,4 @@ export type ReceivablePaymentRepository = {
     receivableId: number,
     filters: ReceivablePaymentFilters,
   ): Promise<PageResponse<ReceivablePayment>>
-  getPaymentById(paymentId: number): Promise<ReceivablePayment>
 }

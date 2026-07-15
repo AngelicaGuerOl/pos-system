@@ -2,11 +2,13 @@ import type { ProductUnit } from '../../../catalog/products'
 
 export type SaleType = 'CASH' | 'CREDIT'
 
-export type SaleStatus = 'COMPLETED' | 'CANCELLED'
+export type SaleStatus = 'COMPLETED' | 'PARTIALLY_RETURNED' | 'RETURNED' | 'CANCELLED'
 
 export type SaleReceivable = {
   id: number
   originalAmount: number
+  returnedAmount: number
+  adjustedAmount: number
   paidAmount: number
   outstandingBalance: number
   status: 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED'
@@ -19,6 +21,9 @@ export type SaleItem = {
   productBarcode: string
   productUnit: ProductUnit
   quantity: number
+  soldQuantity: number
+  returnedQuantity: number
+  returnableQuantity: number
   unitPrice: number
   lineTotal: number
 }
@@ -37,6 +42,7 @@ export type Sale = {
   changeAmount: number | null
   createdAt: string
   cancelledAt?: string | null
+  totalReturnedAmount: number
   receivable: SaleReceivable | null
   items: SaleItem[]
 }
@@ -82,11 +88,13 @@ export type CreateSaleData = {
 }
 
 export const SALE_TYPE_LABELS: Record<SaleType, string> = {
-  CASH: 'Efectivo',
+  CASH: 'Contado',
   CREDIT: 'Fiado',
 }
 
 export const SALE_STATUS_LABELS: Record<SaleStatus, string> = {
   COMPLETED: 'Completada',
+  PARTIALLY_RETURNED: 'Devuelta parcialmente',
+  RETURNED: 'Devuelta',
   CANCELLED: 'Cancelada',
 }

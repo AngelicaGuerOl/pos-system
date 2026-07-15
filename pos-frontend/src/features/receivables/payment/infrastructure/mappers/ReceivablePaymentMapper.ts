@@ -16,7 +16,6 @@ export type BackendReceivablePaymentResponse = {
   receivedById: number
   receivedByUsername: string
   amount: number
-  notes: string | null
   createdAt: string
   paidAmount: number
   outstandingBalance: number
@@ -25,7 +24,6 @@ export type BackendReceivablePaymentResponse = {
 
 export type BackendCreateReceivablePaymentRequest = {
   amount: number
-  notes?: string | null
 }
 
 export const ReceivablePaymentMapper = {
@@ -40,7 +38,6 @@ export const ReceivablePaymentMapper = {
       receivedById: response.receivedById,
       receivedByUsername: response.receivedByUsername,
       amount: Number(response.amount),
-      notes: response.notes ?? null,
       createdAt: response.createdAt,
       paidAmount: Number(response.paidAmount),
       outstandingBalance: Number(response.outstandingBalance),
@@ -58,7 +55,6 @@ export const ReceivablePaymentMapper = {
   toRequest(request: CreateReceivablePaymentRequest): BackendCreateReceivablePaymentRequest {
     return {
       amount: request.amount,
-      notes: request.notes ?? null,
     }
   },
 

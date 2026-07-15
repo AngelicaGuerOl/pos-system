@@ -7,7 +7,7 @@ import { ProductsPage } from '../../features/catalog/products'
 import { CustomersPage } from '../../features/customers'
 import { DashboardPage } from '../../features/dashboard'
 import { InventoryMovementsPage } from '../../features/inventory/movement'
-import { ReceivablesPage } from '../../features/receivables'
+import { CustomerAccountPage, ReceivablesPage } from '../../features/receivables'
 import { SalesHistoryPage, SalesPage } from '../../features/sales'
 import { UsersPage } from '../../features/users'
 import { ProtectedRoute } from '../../shared/routes/ProtectedRoute'
@@ -70,6 +70,10 @@ export const appRoutes: RouteObject[] = [
               {
                 path: ROUTE_PATHS.receivables,
                 element: <ReceivablesPage />,
+              },
+              {
+                path: ROUTE_PATHS.customerAccountReceivable,
+                element: <CustomerAccountPage />,
               },
             ],
           },

@@ -14,14 +14,13 @@ import {
   type AlertColor,
 } from '@mui/material'
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../auth'
 import { ConfirmDialog } from '../../../../shared/ui/components/ConfirmDialog'
 import { DataGridShell } from '../../../../shared/ui/components/DataGridShell'
 import { EmptyState } from '../../../../shared/ui/components/EmptyState'
 import { PageHeader } from '../../../../shared/ui/components/PageHeader'
-import { CustomerReceivablesDrawer } from '../../../receivables/ui/components/CustomerReceivablesDrawer'
-import { ReceivableDetailDrawer } from '../../../receivables/ui/components/ReceivableDetailDrawer'
-import { useReceivableDetails } from '../../../receivables/ui/hooks/useReceivableDetails'
+import { ROUTE_PATHS } from '../../../../shared/routes/routePaths'
 import type { Customer, CustomerMutation } from '../../domain/entities/Customer'
 import { CustomerModal } from '../components/CustomerModal'
 import { CustomersGrid } from '../components/CustomersGrid'
@@ -36,13 +35,12 @@ type ModalState =
   | { open: true; mode: 'edit'; customer: Customer }
 
 export const CustomersPage = () => {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const canCreateOrEdit = user?.role === 'ADMIN' || user?.role === 'CASHIER'
   const canDeactivate = user?.role === 'ADMIN'
   const [modal, setModal] = useState<ModalState>({ customer: null, mode: 'create', open: false })
   const [customerToDeactivate, setCustomerToDeactivate] = useState<Customer | null>(null)
-  const [customerForReceivables, setCustomerForReceivables] = useState<Customer | null>(null)
-  const [customerReceivablesRefreshKey, setCustomerReceivablesRefreshKey] = useState(0)
   const [message, setMessage] = useState<{ text: string; severity: AlertColor } | null>(null)
   const {
     customers,
@@ -60,7 +58,6 @@ export const CustomersPage = () => {
   const createCustomer = useCreateCustomer()
   const updateCustomer = useUpdateCustomer()
   const deactivateCustomer = useDeactivateCustomer()
-  const receivableDetails = useReceivableDetails()
 
   const mutationError = useMemo(
     () => createCustomer.error ?? updateCustomer.error ?? deactivateCustomer.error,
@@ -180,7 +177,8 @@ export const CustomersPage = () => {
                 loading={loading}
                 onDeactivate={setCustomerToDeactivate}
                 onEdit={(customer) => setModal({ customer, mode: 'edit', open: true })}
-                onViewReceivables={setCustomerForReceivables}
+                onViewReceivables={(customer) =>
+                  navigate(ROUTE_PATHS.customerAccountReceivable.replace(':customerId', String(customer.id)))}
               />
 
               <TablePagination
@@ -207,26 +205,6 @@ export const CustomersPage = () => {
         onSubmit={handleSubmit}
         open={modal.open}
         serverErrors={mutationError?.validationErrors}
-      />
-
-      <CustomerReceivablesDrawer
-        customer={customerForReceivables}
-        onClose={() => setCustomerForReceivables(null)}
-        onViewDetails={(receivableId) => void receivableDetails.openDetails(receivableId)}
-        open={Boolean(customerForReceivables)}
-        refreshKey={customerReceivablesRefreshKey}
-      />
-
-      <ReceivableDetailDrawer
-        errorMessage={receivableDetails.error?.message}
-        loading={receivableDetails.loading}
-        onClose={receivableDetails.closeDetails}
-        onPaymentRegistered={async () => {
-          await receivableDetails.refreshDetails()
-          setCustomerReceivablesRefreshKey((current) => current + 1)
-        }}
-        open={receivableDetails.open}
-        receivable={receivableDetails.receivable}
       />
 
       <ConfirmDialog

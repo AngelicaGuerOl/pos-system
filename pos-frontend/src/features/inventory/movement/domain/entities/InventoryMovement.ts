@@ -6,6 +6,7 @@ export type InventoryMovementType =
   | 'MANUAL_EXIT'
   | 'SALE'
   | 'RETURN'
+  | 'SALE_RETURN'
 
 export type InventoryMovement = {
   id: number
@@ -55,4 +56,5 @@ export const INVENTORY_MOVEMENT_TYPE_LABELS: Record<InventoryMovementType, strin
   MANUAL_EXIT: 'Salida manual',
   SALE: 'Venta',
   RETURN: 'Devolucion',
+  SALE_RETURN: 'Devolucion de venta',
 }

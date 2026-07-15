@@ -3,13 +3,11 @@ import type { PageResponse } from '../../../shared/types/PageResponse'
 import type {
   CustomerReceivableFilters,
   Receivable,
-  ReceivableDetail,
   ReceivableFilters,
 } from '../domain/entities/Receivable'
 import type { ReceivableRepository } from '../domain/repositories/ReceivableRepository'
 import {
   ReceivableMapper,
-  type BackendReceivableDetailResponse,
   type BackendReceivableResponse,
 } from './mappers/ReceivableMapper'
 
@@ -29,12 +27,6 @@ export class ReceivableRepositoryImpl implements ReceivableRepository {
     )
 
     return ReceivableMapper.toPage(data)
-  }
-
-  async getById(id: number): Promise<ReceivableDetail> {
-    const { data } = await this.client.get<BackendReceivableDetailResponse>(`/receivables/${id}`)
-
-    return ReceivableMapper.toDetailEntity(data)
   }
 
   async getByCustomer(

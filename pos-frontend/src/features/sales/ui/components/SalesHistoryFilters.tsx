@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { normalizeApiError } from '../../../../shared/api/apiError'
+import { CalendarioPicker } from '../../../../shared/ui/components/CalendarioPicker'
 import { customerDependencies } from '../../../customers/dependencies'
 import type { Customer } from '../../../customers/domain/entities/Customer'
 import { userDependencies } from '../../../users/dependencies'
@@ -250,21 +251,17 @@ export const SalesHistoryFilters = ({
         spacing={1.5}
         sx={{ alignItems: { xs: 'stretch', md: 'center' } }}
       >
-        <TextField
+        <CalendarioPicker
           label="Fecha inicial"
-          onChange={(event) => onChange({ from: event.target.value || undefined })}
-          size="small"
-          slotProps={{ inputLabel: { shrink: true } }}
-          type="datetime-local"
-          value={filters.from ?? ''}
+          onChange={(value) => onChange({ from: value ?? undefined })}
+          sx={{ maxWidth: { md: 180 }, minWidth: { xs: '100%', md: 170 } }}
+          value={filters.from ?? null}
         />
-        <TextField
+        <CalendarioPicker
           label="Fecha final"
-          onChange={(event) => onChange({ to: event.target.value || undefined })}
-          size="small"
-          slotProps={{ inputLabel: { shrink: true } }}
-          type="datetime-local"
-          value={filters.to ?? ''}
+          onChange={(value) => onChange({ to: value ?? undefined })}
+          sx={{ maxWidth: { md: 180 }, minWidth: { xs: '100%', md: 170 } }}
+          value={filters.to ?? null}
         />
         <Button onClick={onClear} startIcon={<ClearRoundedIcon />}>
           Limpiar filtros

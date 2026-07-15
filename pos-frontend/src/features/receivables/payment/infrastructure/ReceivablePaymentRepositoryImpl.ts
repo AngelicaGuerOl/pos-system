@@ -43,12 +43,4 @@ export class ReceivablePaymentRepositoryImpl implements ReceivablePaymentReposit
 
     return ReceivablePaymentMapper.toPage(data)
   }
-
-  async getPaymentById(paymentId: number): Promise<ReceivablePayment> {
-    const { data } = await this.client.get<BackendReceivablePaymentResponse>(
-      `/receivable-payments/${paymentId}`,
-    )
-
-    return ReceivablePaymentMapper.toEntity(data)
-  }
 }

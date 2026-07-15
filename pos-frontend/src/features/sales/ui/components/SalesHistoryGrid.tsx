@@ -1,5 +1,5 @@
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
-import { Box, Button, Chip, Typography } from '@mui/material'
+import { Box, Button, Chip, Typography, useMediaQuery, useTheme } from '@mui/material'
 import {
   AllCommunityModule,
   ModuleRegistry,
@@ -26,31 +26,39 @@ type SalesHistoryGridProps = {
 }
 
 export const SalesHistoryGrid = ({ loading, onViewDetails, sales }: SalesHistoryGridProps) => {
+  const theme = useTheme()
+  const compact = useMediaQuery(theme.breakpoints.down('lg'))
+  const narrow = useMediaQuery(theme.breakpoints.down('md'))
+
   const columnDefs = useMemo<ColDef<SaleSummary>[]>(
     () => [
       {
         field: 'id',
         headerName: 'Folio',
-        maxWidth: 110,
-        minWidth: 100,
+        flex: 0.55,
+        maxWidth: 86,
+        minWidth: 74,
         valueFormatter: ({ value }) => `#${value}`,
       },
       {
         field: 'createdAt',
         headerName: 'Fecha y hora',
-        minWidth: 190,
+        flex: 1.05,
+        minWidth: 132,
         valueFormatter: ({ value }) => formatDateTime(value as string | null | undefined),
       },
       {
         field: 'createdByUsername',
         headerName: 'Cajero',
-        minWidth: 150,
+        flex: 0.8,
+        hide: compact,
+        minWidth: 105,
       },
       {
         field: 'customerFullName',
         flex: 1,
         headerName: 'Cliente',
-        minWidth: 210,
+        minWidth: narrow ? 135 : 170,
         cellRenderer: ({ value }: ICellRendererParams<SaleSummary, string>) => (
           <Typography noWrap sx={{ fontSize: 'inherit' }}>
             {value || 'Público general'}
@@ -60,22 +68,26 @@ export const SalesHistoryGrid = ({ loading, onViewDetails, sales }: SalesHistory
       {
         field: 'saleType',
         headerName: 'Tipo',
-        minWidth: 130,
+        flex: 0.65,
+        hide: narrow,
+        minWidth: 86,
         valueFormatter: ({ value }) => SALE_TYPE_LABELS[value as SaleSummary['saleType']] ?? value,
       },
       {
         field: 'total',
         headerName: 'Total',
-        minWidth: 140,
+        flex: 0.75,
+        minWidth: 95,
         valueFormatter: ({ value }) => formatCurrency(Number(value)),
       },
       {
         field: 'status',
-        headerName: 'Estado',
-        minWidth: 140,
+        headerName: 'Estado de venta',
+        flex: 0.95,
+        minWidth: 128,
         cellRenderer: ({ value }: ICellRendererParams<SaleSummary, SaleStatus>) => (
           <Chip
-            color={value === 'COMPLETED' ? 'success' : 'default'}
+            color={value === 'COMPLETED' ? 'success' : value === 'PARTIALLY_RETURNED' ? 'warning' : value === 'RETURNED' ? 'info' : 'default'}
             label={value ? SALE_STATUS_LABELS[value] : '-'}
             size="small"
             variant={value === 'COMPLETED' ? 'filled' : 'outlined'}
@@ -83,17 +95,27 @@ export const SalesHistoryGrid = ({ loading, onViewDetails, sales }: SalesHistory
         ),
       },
       {
-        colId: 'receivableStatus',
-        headerName: 'Cuenta por cobrar',
-        minWidth: 180,
-        cellRenderer: ({ data }: ICellRendererParams<SaleSummary>) =>
-          data?.receivable ? <ReceivableStatusChip status={data.receivable.status} /> : '-',
+        colId: 'paymentStatus',
+        headerName: 'Estado de pago',
+        flex: 0.9,
+        hide: narrow,
+        minWidth: 126,
+        cellRenderer: ({ data }: ICellRendererParams<SaleSummary>) => {
+          if (!data) {
+            return '-'
+          }
+          if (data.saleType === 'CASH') {
+            return <Chip color="success" label="Pagada" size="small" />
+          }
+          return data.receivable ? <ReceivableStatusChip status={data.receivable.status} /> : null
+        },
       },
       {
         colId: 'actions',
         headerName: '',
-        maxWidth: 150,
-        minWidth: 140,
+        flex: 0.8,
+        maxWidth: 132,
+        minWidth: 118,
         sortable: false,
         cellRenderer: ({ data }: ICellRendererParams<SaleSummary>) =>
           data ? (
@@ -107,7 +129,7 @@ export const SalesHistoryGrid = ({ loading, onViewDetails, sales }: SalesHistory
           ) : null,
       },
     ],
-    [onViewDetails],
+    [compact, narrow, onViewDetails],
   )
 
   return (
@@ -115,7 +137,12 @@ export const SalesHistoryGrid = ({ loading, onViewDetails, sales }: SalesHistory
       <AgGridReact<SaleSummary>
         animateRows
         columnDefs={columnDefs}
-        defaultColDef={{ filter: false, resizable: true, sortable: false }}
+        defaultColDef={{
+          filter: false,
+          resizable: true,
+          sortable: false,
+          suppressSizeToFit: false,
+        }}
         getRowId={({ data }) => data.id.toString()}
         loading={loading}
         noRowsOverlayComponent={() => (

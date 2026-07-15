@@ -1,23 +1,24 @@
 import { useCallback, useState } from 'react'
 import { normalizeApiError, type NormalizedApiError } from '../../../../../shared/api/apiError'
-import { receivableDependencies } from '../../../dependencies'
-import type { ReceivablePayment } from '../../domain/entities/ReceivablePayment'
+import { saleDependencies } from '../../../dependencies'
+import type { SaleReturnDetails } from '../../domain/entities/SaleReturn'
 
-export const useReceivablePaymentDetails = () => {
-  const [payment, setPayment] = useState<ReceivablePayment | null>(null)
+export const useSaleReturnDetails = () => {
+  const [saleReturn, setSaleReturn] = useState<SaleReturnDetails | null>(null)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<NormalizedApiError | null>(null)
 
-  const openDetails = useCallback(async (paymentId: number) => {
+  const openDetails = useCallback(async (returnId: number) => {
     setOpen(true)
     setLoading(true)
     setError(null)
 
     try {
-      setPayment(await receivableDependencies.getReceivablePaymentByIdUseCase.execute(paymentId))
+      const data = await saleDependencies.getSaleReturnByIdUseCase.execute(returnId)
+      setSaleReturn(data)
     } catch (unknownError) {
-      setPayment(null)
+      setSaleReturn(null)
       setError(normalizeApiError(unknownError))
     } finally {
       setLoading(false)
@@ -26,7 +27,7 @@ export const useReceivablePaymentDetails = () => {
 
   const closeDetails = useCallback(() => {
     setOpen(false)
-    setPayment(null)
+    setSaleReturn(null)
     setError(null)
   }, [])
 
@@ -36,6 +37,6 @@ export const useReceivablePaymentDetails = () => {
     loading,
     open,
     openDetails,
-    payment,
+    saleReturn,
   }
 }

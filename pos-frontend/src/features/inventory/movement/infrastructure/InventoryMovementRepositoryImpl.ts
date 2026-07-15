@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import type { PageResponse } from '../../../../shared/types/PageResponse'
+import { toEndOfDayISOString, toStartOfDayISOString } from '../../../../shared/utils/dateFilters'
 import type {
   InventoryMovement,
   InventoryMovementFilters,
@@ -10,14 +11,6 @@ import {
   InventoryMovementMapper,
   type BackendInventoryMovementResponse,
 } from './mappers/InventoryMovementMapper'
-
-const toOffsetDateTime = (value?: string): string | undefined => {
-  if (!value) {
-    return undefined
-  }
-
-  return new Date(value).toISOString()
-}
 
 export class InventoryMovementRepositoryImpl implements InventoryMovementRepository {
   private readonly client: AxiosInstance
@@ -53,8 +46,8 @@ export class InventoryMovementRepositoryImpl implements InventoryMovementReposit
           productId: filters.productId || undefined,
           direction: filters.direction || undefined,
           type: filters.type || undefined,
-          from: toOffsetDateTime(filters.from),
-          to: toOffsetDateTime(filters.to),
+          from: toStartOfDayISOString(filters.from),
+          to: toEndOfDayISOString(filters.to),
           page: filters.page,
           size: filters.size,
           sort: filters.sort ?? 'createdAt,DESC',
