@@ -1,4 +1,5 @@
 import { httpClient } from '../../shared/api/httpClient'
+import { CancelSaleUseCase } from './application/useCases/CancelSaleUseCase'
 import { CreateSaleUseCase } from './application/useCases/CreateSaleUseCase'
 import { GetCurrentSessionSalesUseCase } from './application/useCases/GetCurrentSessionSalesUseCase'
 import { GetSaleByIdUseCase } from './application/useCases/GetSaleByIdUseCase'
@@ -13,6 +14,7 @@ const saleRepository = new SaleRepositoryImpl(httpClient)
 const saleReturnRepository = new SaleReturnRepositoryImpl(httpClient)
 
 export const saleDependencies = {
+  cancelSaleUseCase: new CancelSaleUseCase(saleRepository),
   createSaleUseCase: new CreateSaleUseCase(saleRepository),
   createSaleReturnUseCase: new CreateSaleReturnUseCase(saleReturnRepository),
   getCurrentSessionSalesUseCase: new GetCurrentSessionSalesUseCase(saleRepository),

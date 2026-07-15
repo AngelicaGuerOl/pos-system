@@ -1,4 +1,5 @@
 import { Box, Chip, Stack, Typography } from '@mui/material'
+import type { ReactNode } from 'react'
 import { formatCurrency } from '../../../../../shared/utils/formatters'
 import { RECEIVABLE_STATUS_LABELS } from '../../../../receivables'
 import {
@@ -37,10 +38,11 @@ const getSalePaymentLabel = (sale: Sale): string => {
 }
 
 type SaleDetailsSummaryProps = {
+  actions?: ReactNode
   sale: Sale
 }
 
-export const SaleDetailsSummary = ({ sale }: SaleDetailsSummaryProps) => {
+export const SaleDetailsSummary = ({ actions, sale }: SaleDetailsSummaryProps) => {
   const paymentStatus = getSalePaymentLabel(sale)
   const rows = sale.saleType === 'CASH'
     ? [
@@ -59,17 +61,24 @@ export const SaleDetailsSummary = ({ sale }: SaleDetailsSummaryProps) => {
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-        <Chip label={SALE_TYPE_LABELS[sale.saleType]} size="small" />
-        <Chip
-          color={saleStatusColor(sale.status)}
-          label={SALE_STATUS_LABELS[sale.status]}
-          size="small"
-          variant={sale.status === 'COMPLETED' ? 'filled' : 'outlined'}
-        />
-        {paymentStatus !== '-' ? (
-          <Chip label={paymentStatus} size="small" variant="outlined" />
-        ) : null}
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={1.5}
+        sx={{ alignItems: { xs: 'stretch', md: 'flex-start' } }}
+      >
+        <Stack direction="row" spacing={1} sx={{ flex: 1, flexWrap: 'wrap' }}>
+          <Chip label={SALE_TYPE_LABELS[sale.saleType]} size="small" />
+          <Chip
+            color={saleStatusColor(sale.status)}
+            label={SALE_STATUS_LABELS[sale.status]}
+            size="small"
+            variant={sale.status === 'COMPLETED' ? 'filled' : 'outlined'}
+          />
+          {paymentStatus !== '-' ? (
+            <Chip label={paymentStatus} size="small" variant="outlined" />
+          ) : null}
+        </Stack>
+        {actions ? <Box sx={{ flexShrink: 0 }}>{actions}</Box> : null}
       </Stack>
 
       <Box

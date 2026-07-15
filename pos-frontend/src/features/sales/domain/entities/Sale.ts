@@ -87,6 +87,24 @@ export type CreateSaleData = {
   items: CreateSaleItemData[]
 }
 
+export type CancelSaleData = {
+  reason: string
+}
+
+export type SaleCancellation = {
+  id: number
+  saleId: number
+  saleNumber: number
+  saleType: SaleType
+  saleStatus: SaleStatus
+  reason: string
+  refundAmount: number
+  cashSessionId: number | null
+  cancelledByUserId: number
+  cancelledByUsername: string
+  createdAt: string
+}
+
 export const SALE_TYPE_LABELS: Record<SaleType, string> = {
   CASH: 'Contado',
   CREDIT: 'Fiado',

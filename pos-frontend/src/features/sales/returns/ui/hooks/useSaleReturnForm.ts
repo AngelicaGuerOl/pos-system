@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { Sale, SaleItem } from '../../../domain/entities/Sale'
 import type { CreateSaleReturnRequest } from '../../domain/entities/SaleReturn'
-import { clampReturnQuantity, getInitialReturnQuantity } from '../utils/returnQuantity'
+import { getInitialReturnQuantity } from '../utils/returnQuantity'
 
 type ReturnFormState = {
   quantities: Record<number, number>
@@ -82,7 +82,7 @@ export const useSaleReturnForm = (sale: Sale | null) => {
       ...current,
       quantities: {
         ...current.quantities,
-        [item.id]: clampReturnQuantity(quantity, item),
+        [item.id]: quantity,
       },
     }))
   }, [])
@@ -112,6 +112,10 @@ export const useSaleReturnForm = (sale: Sale | null) => {
 
     if (items.some((item) => item.quantity <= 0)) {
       setFormError('Revisa las cantidades seleccionadas.')
+      return null
+    }
+    if (selectedItems.some((item) => (form.quantities[item.id] ?? 0) > item.returnableQuantity)) {
+      setFormError('Hay cantidades que superan lo disponible para devolución.')
       return null
     }
 

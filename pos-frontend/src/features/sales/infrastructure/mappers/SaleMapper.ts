@@ -1,6 +1,7 @@
 import type {
   CreateSaleData,
   CreateSaleItemData,
+  SaleCancellation,
   Sale,
   SaleHistoryFilters,
   SaleItem,
@@ -78,6 +79,24 @@ export type BackendCreateSaleRequest = {
   items: BackendCreateSaleItemRequest[]
 }
 
+export type BackendCancelSaleRequest = {
+  reason: string
+}
+
+export type BackendSaleCancellationResponse = {
+  id: number
+  saleId: number
+  saleNumber: number
+  saleType: SaleType
+  saleStatus: SaleStatus
+  reason: string
+  refundAmount: number
+  cashSessionId: number | null
+  cancelledByUserId: number
+  cancelledByUsername: string
+  createdAt: string
+}
+
 export const SaleMapper = {
   toEntity(response: BackendSaleResponse): Sale {
     return {
@@ -153,6 +172,28 @@ export const SaleMapper = {
         productId: item.productId,
         quantity: item.quantity,
       })),
+    }
+  },
+
+  toCancelRequest(reason: string): BackendCancelSaleRequest {
+    return {
+      reason,
+    }
+  },
+
+  toCancellationEntity(response: BackendSaleCancellationResponse): SaleCancellation {
+    return {
+      id: response.id,
+      saleId: response.saleId,
+      saleNumber: response.saleNumber,
+      saleType: response.saleType,
+      saleStatus: response.saleStatus,
+      reason: response.reason,
+      refundAmount: Number(response.refundAmount),
+      cashSessionId: response.cashSessionId,
+      cancelledByUserId: response.cancelledByUserId,
+      cancelledByUsername: response.cancelledByUsername,
+      createdAt: response.createdAt,
     }
   },
 

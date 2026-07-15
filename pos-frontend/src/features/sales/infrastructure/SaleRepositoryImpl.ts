@@ -1,9 +1,17 @@
 import type { AxiosInstance } from 'axios'
 import type { PageResponse } from '../../../shared/types/PageResponse'
-import type { CreateSaleData, Sale, SaleHistoryFilters, SaleSummary } from '../domain/entities/Sale'
+import type {
+  CancelSaleData,
+  CreateSaleData,
+  Sale,
+  SaleCancellation,
+  SaleHistoryFilters,
+  SaleSummary,
+} from '../domain/entities/Sale'
 import type { SaleRepository } from '../domain/repositories/SaleRepository'
 import {
   SaleMapper,
+  type BackendSaleCancellationResponse,
   type BackendSaleResponse,
   type BackendSaleSummaryResponse,
 } from './mappers/SaleMapper'
@@ -13,6 +21,15 @@ export class SaleRepositoryImpl implements SaleRepository {
 
   constructor(client: AxiosInstance) {
     this.client = client
+  }
+
+  async cancelSale(id: number, data: CancelSaleData): Promise<SaleCancellation> {
+    const response = await this.client.post<BackendSaleCancellationResponse>(
+      `/sales/${id}/cancel`,
+      SaleMapper.toCancelRequest(data.reason),
+    )
+
+    return SaleMapper.toCancellationEntity(response.data)
   }
 
   async createSale(data: CreateSaleData): Promise<Sale> {

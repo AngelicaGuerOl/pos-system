@@ -7,6 +7,9 @@ export const getQuantityStep = (item: SaleItem): number => {
 export const clampReturnQuantity = (value: number, item: SaleItem): number => {
   const step = getQuantityStep(item)
   const min = Math.min(step, item.returnableQuantity)
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0
+  }
   const clamped = Math.min(Math.max(value, min), item.returnableQuantity)
   return Number(clamped.toFixed(2))
 }
