@@ -10,6 +10,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import RequestQuoteRoundedIcon from '@mui/icons-material/RequestQuoteRounded'
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import ReceiptRoundedIcon from '@mui/icons-material/ReceiptRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
@@ -124,6 +125,12 @@ const navigationItems: NavigationItem[] = [
         roles: ['ADMIN'],
       },
     ],
+  },
+  {
+    label: 'Reportes',
+    path: ROUTE_PATHS.reports,
+    icon: <AssessmentRoundedIcon />,
+    roles: ['ADMIN'],
   },
   {
     label: 'Usuarios',

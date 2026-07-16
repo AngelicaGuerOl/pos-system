@@ -12,6 +12,17 @@ export const formatNumber = (value: number): string => {
   }).format(value)
 }
 
+export const formatDate = (value?: string | null): string => {
+  if (!value) {
+    return '-'
+  }
+
+  return new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(new Date(`${value}T00:00:00Z`))
+}
+
 export const formatDateTime = (value?: string | null): string => {
   if (!value) {
     return '-'
@@ -22,4 +33,3 @@ export const formatDateTime = (value?: string | null): string => {
     timeStyle: 'short',
   }).format(new Date(value))
 }
-

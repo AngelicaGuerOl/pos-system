@@ -12,6 +12,7 @@ import { CustomersPage } from '../../features/customers'
 import { DashboardPage } from '../../features/dashboard'
 import { InventoryMovementsPage } from '../../features/inventory/movement'
 import { CustomerAccountPage, ReceivablesPage } from '../../features/receivables'
+import { OperationsReportPage } from '../../features/reports'
 import { SalesHistoryPage, SalesPage } from '../../features/sales'
 import { UsersPage } from '../../features/users'
 import { ProtectedRoute } from '../../shared/routes/ProtectedRoute'
@@ -82,6 +83,10 @@ export const appRoutes: RouteObject[] = [
               {
                 path: ROUTE_PATHS.customerAccountReceivable,
                 element: <CustomerAccountPage />,
+              },
+              {
+                path: ROUTE_PATHS.reports,
+                element: <OperationsReportPage />,
               },
             ],
           },
