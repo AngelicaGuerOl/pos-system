@@ -40,6 +40,9 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
     private static final int MAX_QUANTITY_INTEGER_DIGITS = 8;
     private static final int MAX_QUANTITY_SCALE = 2;
     private static final String PRODUCT_CREATION_SOURCE_TYPE = "PRODUCT_CREATION";
+    private static final String SALE_SOURCE_TYPE = "SALE";
+    private static final String SALE_RETURN_SOURCE_TYPE = "SALE_RETURN";
+    private static final String SALE_CANCELLATION_SOURCE_TYPE = "SALE_CANCELLATION";
 
     private final InventoryMovementRepository inventoryMovementRepository;
     private final ProductRepository productRepository;
@@ -152,42 +155,16 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
             Long saleItemId,
             User user
     ) {
-        validateStockMovement(
-                lockedProduct == null ? null : lockedProduct.getId(),
+        return registerProductMovement(
+                lockedProduct,
                 quantity,
-                "Venta",
+                "Salida por venta",
                 InventoryMovementDirection.OUT,
                 InventoryMovementType.SALE,
-                "SALE_ITEM",
-                saleItemId
+                SALE_SOURCE_TYPE,
+                saleItemId,
+                user
         );
-        if (user == null || user.getId() == null) {
-            throw new IllegalArgumentException("User is required");
-        }
-
-        BigDecimal previousStock = lockedProduct.getCurrentStock();
-        BigDecimal newStock = calculateNewStock(
-                lockedProduct,
-                previousStock,
-                quantity,
-                InventoryMovementDirection.OUT
-        );
-        lockedProduct.setCurrentStock(newStock);
-
-        InventoryMovement movement = InventoryMovement.builder()
-                .product(lockedProduct)
-                .createdBy(user)
-                .direction(InventoryMovementDirection.OUT)
-                .type(InventoryMovementType.SALE)
-                .quantity(quantity)
-                .previousStock(previousStock)
-                .newStock(newStock)
-                .description("Venta")
-                .sourceType("SALE_ITEM")
-                .sourceId(saleItemId)
-                .build();
-
-        return inventoryMovementRepository.save(movement);
     }
 
     @Override
@@ -198,42 +175,16 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
             Long saleReturnItemId,
             User user
     ) {
-        validateStockMovement(
-                lockedProduct == null ? null : lockedProduct.getId(),
+        return registerProductMovement(
+                lockedProduct,
                 quantity,
-                "Devolucion de venta",
+                "Entrada por devolucion de venta",
                 InventoryMovementDirection.IN,
                 InventoryMovementType.SALE_RETURN,
-                "SALE_RETURN_ITEM",
-                saleReturnItemId
+                SALE_RETURN_SOURCE_TYPE,
+                saleReturnItemId,
+                user
         );
-        if (user == null || user.getId() == null) {
-            throw new IllegalArgumentException("User is required");
-        }
-
-        BigDecimal previousStock = lockedProduct.getCurrentStock();
-        BigDecimal newStock = calculateNewStock(
-                lockedProduct,
-                previousStock,
-                quantity,
-                InventoryMovementDirection.IN
-        );
-        lockedProduct.setCurrentStock(newStock);
-
-        InventoryMovement movement = InventoryMovement.builder()
-                .product(lockedProduct)
-                .createdBy(user)
-                .direction(InventoryMovementDirection.IN)
-                .type(InventoryMovementType.SALE_RETURN)
-                .quantity(quantity)
-                .previousStock(previousStock)
-                .newStock(newStock)
-                .description("Devolucion de venta")
-                .sourceType("SALE_RETURN_ITEM")
-                .sourceId(saleReturnItemId)
-                .build();
-
-        return inventoryMovementRepository.save(movement);
     }
 
     @Override
@@ -244,42 +195,16 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
             Long saleCancellationId,
             User user
     ) {
-        validateStockMovement(
-                lockedProduct == null ? null : lockedProduct.getId(),
+        return registerProductMovement(
+                lockedProduct,
                 quantity,
-                "Cancelacion de venta",
+                "Entrada por cancelacion de venta",
                 InventoryMovementDirection.IN,
                 InventoryMovementType.SALE_CANCELLATION,
-                "SALE_CANCELLATION",
-                saleCancellationId
+                SALE_CANCELLATION_SOURCE_TYPE,
+                saleCancellationId,
+                user
         );
-        if (user == null || user.getId() == null) {
-            throw new IllegalArgumentException("User is required");
-        }
-
-        BigDecimal previousStock = lockedProduct.getCurrentStock();
-        BigDecimal newStock = calculateNewStock(
-                lockedProduct,
-                previousStock,
-                quantity,
-                InventoryMovementDirection.IN
-        );
-        lockedProduct.setCurrentStock(newStock);
-
-        InventoryMovement movement = InventoryMovement.builder()
-                .product(lockedProduct)
-                .createdBy(user)
-                .direction(InventoryMovementDirection.IN)
-                .type(InventoryMovementType.SALE_CANCELLATION)
-                .quantity(quantity)
-                .previousStock(previousStock)
-                .newStock(newStock)
-                .description("Cancelacion de venta")
-                .sourceType("SALE_CANCELLATION")
-                .sourceId(saleCancellationId)
-                .build();
-
-        return inventoryMovementRepository.save(movement);
     }
 
     @Override
@@ -398,6 +323,53 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
         return newStock;
     }
 
+    private InventoryMovement registerProductMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            String description,
+            InventoryMovementDirection direction,
+            InventoryMovementType type,
+            String sourceType,
+            Long sourceId,
+            User user
+    ) {
+        if (lockedProduct == null || lockedProduct.getId() == null) {
+            throw new IllegalArgumentException("Product is required");
+        }
+        if (user == null || user.getId() == null) {
+            throw new IllegalArgumentException("User is required");
+        }
+
+        validateStockMovement(
+                lockedProduct.getId(),
+                quantity,
+                description,
+                direction,
+                type,
+                sourceType,
+                sourceId
+        );
+
+        BigDecimal previousStock = lockedProduct.getCurrentStock();
+        BigDecimal newStock = calculateNewStock(lockedProduct, previousStock, quantity, direction);
+        lockedProduct.setCurrentStock(newStock);
+
+        InventoryMovement movement = InventoryMovement.builder()
+                .product(lockedProduct)
+                .createdBy(user)
+                .direction(direction)
+                .type(type)
+                .quantity(quantity)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .description(description)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .build();
+
+        return inventoryMovementRepository.save(movement);
+    }
+
     private PageResponse<InventoryMovementResponse> toPageResponse(Page<InventoryMovement> movementsPage) {
         List<InventoryMovementResponse> content = inventoryMovementMapper.toResponseList(movementsPage.getContent());
 
@@ -513,7 +485,7 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
 
     private void validatePageSize(Pageable pageable) {
         if (pageable.getPageSize() > MAX_PAGE_SIZE) {
-            throw new IllegalArgumentException("El tamano de pagina no debe superar " + MAX_PAGE_SIZE + " registros");
+            throw new IllegalArgumentException("El tamaño de pagina no debe superar " + MAX_PAGE_SIZE + " registros");
         }
     }
 
