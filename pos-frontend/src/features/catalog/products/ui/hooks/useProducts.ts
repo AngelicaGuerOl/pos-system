@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { normalizeApiError, type NormalizedApiError } from '../../../../../shared/api/apiError'
+import type { PageResponse } from '../../../../../shared/types/PageResponse'
 import { productDependencies } from '../../dependencies'
 import type { Product, ProductFilters } from '../../domain/entities/Product'
 
 export const useProducts = () => {
-  const [products, setProducts] = useState<Product[]>([])
-  const [filters, setFilters] = useState<ProductFilters>({})
+  const [productsPage, setProductsPage] = useState<PageResponse<Product> | null>(null)
+  const [filters, setFilters] = useState<ProductFilters>({ page: 0, size: 50 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<NormalizedApiError | null>(null)
 
@@ -15,7 +16,7 @@ export const useProducts = () => {
 
     try {
       const data = await productDependencies.getProductsUseCase.execute(nextFilters)
-      setProducts(data.content)
+      setProductsPage(data)
     } catch (unknownError) {
       setError(normalizeApiError(unknownError))
     } finally {
@@ -35,9 +36,13 @@ export const useProducts = () => {
     error,
     filters,
     loading,
-    products,
+    page: productsPage?.page ?? filters.page ?? 0,
+    products: productsPage?.content ?? [],
     refetch: fetchProducts,
+    setPage: (page: number) => setFilters((current) => ({ ...current, page })),
     setFilters: updateFilters,
+    setSize: (size: number) => setFilters((current) => ({ ...current, page: 0, size })),
+    size: productsPage?.size ?? filters.size ?? 50,
+    totalElements: productsPage?.totalElements ?? 0,
   }
 }
-

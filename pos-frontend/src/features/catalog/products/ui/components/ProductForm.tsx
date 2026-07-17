@@ -14,6 +14,7 @@ import {
 import { useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import type { Category } from '../../../categories'
+import type { Supplier } from '../../../suppliers'
 import {
   PRODUCT_UNIT_LABELS,
   PRODUCT_UNITS,
@@ -24,6 +25,7 @@ import { productSchema, type ProductFormValues } from '../schemas/productSchema'
 
 type ProductFormProps = {
   categories: Category[]
+  suppliers: Supplier[]
   initialValues?: Product | null
   loading?: boolean
   onCancel: () => void
@@ -32,6 +34,7 @@ type ProductFormProps = {
 
 const getDefaultValues = (product?: Product | null): ProductFormValues => ({
   categoryId: product?.categoryId ?? 0,
+  supplierId: product?.supplierId ?? null,
   barcode: product?.barcode ?? '',
   name: product?.name ?? '',
   description: product?.description ?? '',
@@ -44,6 +47,7 @@ const getDefaultValues = (product?: Product | null): ProductFormValues => ({
 
 export const ProductForm = ({
   categories,
+  suppliers,
   initialValues,
   loading = false,
   onCancel,
@@ -96,6 +100,33 @@ export const ProductForm = ({
                 ))}
               </Select>
               <FormHelperText>{errors.categoryId?.message}</FormHelperText>
+            </FormControl>
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="supplierId"
+          render={({ field }) => (
+            <FormControl error={Boolean(errors.supplierId)} fullWidth>
+              <InputLabel>Proveedor</InputLabel>
+              <Select
+                disabled={loading}
+                label="Proveedor"
+                onChange={(event) => {
+                  const value = Number(event.target.value)
+                  field.onChange(value > 0 ? value : null)
+                }}
+                value={field.value ?? 0}
+              >
+                <MenuItem value={0}>Sin proveedor</MenuItem>
+                {suppliers.map((supplier) => (
+                  <MenuItem key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>{errors.supplierId?.message}</FormHelperText>
             </FormControl>
           )}
         />

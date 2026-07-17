@@ -8,6 +8,7 @@ const hasUpToTwoDecimals = (value: number): boolean => {
 export const productSchema = z
   .object({
     categoryId: z.number().positive('La categoria es obligatoria'),
+    supplierId: z.number().nullable().optional(),
     barcode: z
       .string()
       .trim()

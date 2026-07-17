@@ -14,12 +14,15 @@ import {
   Select,
   Snackbar,
   Stack,
+  TablePagination,
   TextField,
   type AlertColor,
 } from '@mui/material'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../../auth'
 import { useCategories } from '../../../categories/ui/hooks/useCategories'
+import { useSuppliers } from '../../../suppliers/ui/hooks/useSuppliers'
 import { useFormHandler } from '../../../../../shared/lib/forms/useFormHandler'
 import { ConfirmDialog } from '../../../../../shared/ui/components/ConfirmDialog'
 import { DataGridShell } from '../../../../../shared/ui/components/DataGridShell'
@@ -40,12 +43,26 @@ type ModalState =
 
 export const ProductsPage = () => {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const canManage = user?.role === 'ADMIN'
   const [modal, setModal] = useState<ModalState>({ mode: 'create', open: false, product: null })
   const [productToDeactivate, setProductToDeactivate] = useState<Product | null>(null)
   const [message, setMessage] = useState<{ text: string; severity: AlertColor } | null>(null)
   const { categories } = useCategories()
-  const { error, filters, loading, products, refetch, setFilters } = useProducts()
+  const { suppliers } = useSuppliers({ active: true, size: 50 })
+  const {
+    error,
+    filters,
+    loading,
+    page,
+    products,
+    refetch,
+    setFilters,
+    setPage,
+    setSize,
+    size,
+    totalElements,
+  } = useProducts()
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
   const deactivateProduct = useDeactivateProduct()
@@ -56,6 +73,15 @@ export const ProductsPage = () => {
   )
 
   const mutationLoading = createProduct.loading || updateProduct.loading || deactivateProduct.loading
+
+  useEffect(() => {
+    const supplierId = Number(searchParams.get('supplierId'))
+    if (supplierId > 0) {
+      setFilters({ ...filters, page: 0, supplierId })
+    }
+    // Query param should initialize the list once when arriving from suppliers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const notify = useCallback((text: string, severity: 'success' | 'error') => {
     setMessage({ severity, text })
@@ -118,7 +144,7 @@ export const ProductsPage = () => {
             <Box sx={{ flexGrow: 1 }} />
 
             <TextField
-              onChange={(event) => setFilters({ ...filters, search: event.target.value })}
+              onChange={(event) => setFilters({ ...filters, page: 0, search: event.target.value })}
               label="Buscar producto"
               size="small"
               slotProps={{
@@ -136,14 +162,15 @@ export const ProductsPage = () => {
 
             <FormControl size="small" sx={{ minWidth: { xs: '100%', lg: 220 } }}>
               <InputLabel>Categoria</InputLabel>
-              <Select
-                label="Categoria"
-                onChange={(event) =>
-                  setFilters({
-                    ...filters,
-                    categoryId: Number(event.target.value) || null,
-                  })
-                }
+	              <Select
+	                label="Categoria"
+	                onChange={(event) =>
+	                  setFilters({
+	                    ...filters,
+	                    page: 0,
+	                    categoryId: Number(event.target.value) || null,
+	                  })
+	                }
                 value={filters.categoryId ?? 0}
               >
                 <MenuItem value={0}>Todas</MenuItem>
@@ -155,14 +182,36 @@ export const ProductsPage = () => {
               </Select>
             </FormControl>
 
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', lg: 220 } }}>
+              <InputLabel>Proveedor</InputLabel>
+	              <Select
+	                label="Proveedor"
+	                onChange={(event) =>
+	                  setFilters({
+	                    ...filters,
+	                    page: 0,
+	                    supplierId: Number(event.target.value) || null,
+	                  })
+	                }
+                value={filters.supplierId ?? 0}
+              >
+                <MenuItem value={0}>Todos</MenuItem>
+                {suppliers.map((supplier) => (
+                  <MenuItem key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <FormControlLabel
               control={
-                <Checkbox
-                  checked={Boolean(filters.lowStock)}
-                  onChange={(event) =>
-                    setFilters({ ...filters, lowStock: event.target.checked || undefined })
-                  }
-                />
+	                <Checkbox
+	                  checked={Boolean(filters.lowStock)}
+	                  onChange={(event) =>
+	                    setFilters({ ...filters, page: 0, lowStock: event.target.checked || undefined })
+	                  }
+	                />
               }
               label="Bajo stock"
               sx={{ whiteSpace: 'nowrap' }}
@@ -186,17 +235,29 @@ export const ProductsPage = () => {
           ) : (
             <ProductsGrid
               canManage={canManage}
-              loading={loading}
-              onDeactivate={setProductToDeactivate}
-              onEdit={(product) => setModal({ mode: 'edit', open: true, product })}
-              products={products}
-            />
-          )}
-        </Stack>
-      </DataGridShell>
+	              loading={loading}
+	              onDeactivate={setProductToDeactivate}
+	              onEdit={(product) => setModal({ mode: 'edit', open: true, product })}
+	              products={products}
+	            />
+	          )}
+	          <TablePagination
+	            component="div"
+	            count={totalElements}
+	            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+	            labelRowsPerPage="Filas por pagina"
+	            onPageChange={(_event, nextPage) => setPage(nextPage)}
+	            onRowsPerPageChange={(event) => setSize(Number(event.target.value))}
+	            page={page}
+	            rowsPerPage={size}
+	            rowsPerPageOptions={[10, 20, 50]}
+	          />
+	        </Stack>
+	      </DataGridShell>
 
       <ProductModal
         categories={categories}
+        suppliers={suppliers}
         initialData={modal.product}
         loading={mutationLoading || isSubmitting}
         mode={modal.mode}

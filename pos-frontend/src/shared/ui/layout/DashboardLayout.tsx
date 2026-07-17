@@ -5,6 +5,7 @@ import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
+import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PeopleRoundedIcon from '@mui/icons-material/PeopleRounded'
@@ -75,9 +76,46 @@ const navigationItems: NavigationItem[] = [
         icon: <Inventory2RoundedIcon />,
       },
       {
+        label: 'Proveedores',
+        path: ROUTE_PATHS.suppliers,
+        icon: <LocalShippingRoundedIcon />,
+        roles: ['ADMIN'],
+      },
+    ],
+  },
+  {
+    label: 'Inventario',
+    icon: <InventoryRoundedIcon />,
+    roles: ['ADMIN'],
+    children: [
+      {
         label: 'Movimientos de inventario',
         path: ROUTE_PATHS.inventoryMovements,
         icon: <InventoryRoundedIcon />,
+        roles: ['ADMIN'],
+      },
+      {
+        label: 'Registrar mercancia',
+        path: ROUTE_PATHS.supplierEntriesCreate,
+        icon: <LocalShippingRoundedIcon />,
+        roles: ['ADMIN'],
+      },
+      {
+        label: 'Historial de entradas',
+        path: ROUTE_PATHS.supplierEntries,
+        icon: <SearchRoundedIcon />,
+        roles: ['ADMIN'],
+      },
+      {
+        label: 'Corte por proveedor',
+        path: ROUTE_PATHS.supplierSettlementCreate,
+        icon: <ReceiptLongRoundedIcon />,
+        roles: ['ADMIN'],
+      },
+      {
+        label: 'Historial de cortes',
+        path: ROUTE_PATHS.supplierSettlements,
+        icon: <SearchRoundedIcon />,
         roles: ['ADMIN'],
       },
     ],

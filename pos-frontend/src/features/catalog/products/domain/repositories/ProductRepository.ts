@@ -9,4 +9,3 @@ export type ProductRepository = {
   update(id: number, data: ProductMutation): Promise<Product>
   deactivate(id: number): Promise<void>
 }
-

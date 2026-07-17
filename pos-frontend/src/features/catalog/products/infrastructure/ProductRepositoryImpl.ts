@@ -16,6 +16,7 @@ export class ProductRepositoryImpl implements ProductRepository {
       params: {
         search: filters.search || undefined,
         categoryId: filters.categoryId || undefined,
+        supplierId: filters.supplierId || undefined,
         lowStock: filters.lowStock || undefined,
         page: filters.page ?? 0,
         size: filters.size ?? 50,

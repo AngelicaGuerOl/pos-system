@@ -8,9 +8,17 @@ import {
 } from '../../features/cash/session'
 import { CategoriesPage } from '../../features/catalog/categories'
 import { ProductsPage } from '../../features/catalog/products'
+import { SupplierInventoryBaselinePage, SuppliersPage } from '../../features/catalog/suppliers'
 import { CustomersPage } from '../../features/customers'
 import { DashboardPage } from '../../features/dashboard'
 import { InventoryMovementsPage } from '../../features/inventory/movement'
+import { CreateSupplierEntryPage, SupplierEntriesPage, SupplierEntryDetailsPage } from '../../features/inventory/supplierEntries'
+import {
+  CreateSupplierSettlementPage,
+  SupplierSettlementDetailsPage,
+  SupplierSettlementEditPage,
+  SupplierSettlementsPage,
+} from '../../features/inventory/supplierSettlements'
 import { CustomerAccountPage, ReceivablesPage } from '../../features/receivables'
 import { OperationsReportPage } from '../../features/reports'
 import { SalesHistoryPage, SalesPage } from '../../features/sales'
@@ -53,12 +61,12 @@ export const appRoutes: RouteObject[] = [
             path: ROUTE_PATHS.categories,
             element: <CategoriesPage />,
           },
-          {
-            path: ROUTE_PATHS.products,
-            element: <ProductsPage />,
-          },
-          {
-            path: ROUTE_PATHS.customers,
+              {
+                path: ROUTE_PATHS.products,
+                element: <ProductsPage />,
+              },
+              {
+                path: ROUTE_PATHS.customers,
             element: <CustomersPage />,
           },
           {
@@ -71,6 +79,42 @@ export const appRoutes: RouteObject[] = [
               {
                 path: ROUTE_PATHS.inventoryMovements,
                 element: <InventoryMovementsPage />,
+              },
+              {
+                path: ROUTE_PATHS.suppliers,
+                element: <SuppliersPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierInventoryBaseline,
+                element: <SupplierInventoryBaselinePage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierEntries,
+                element: <SupplierEntriesPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierEntriesCreate,
+                element: <CreateSupplierEntryPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierEntryDetails,
+                element: <SupplierEntryDetailsPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierSettlementCreate,
+                element: <CreateSupplierSettlementPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierSettlementEdit,
+                element: <SupplierSettlementEditPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierSettlementDetails,
+                element: <SupplierSettlementDetailsPage />,
+              },
+              {
+                path: ROUTE_PATHS.supplierSettlements,
+                element: <SupplierSettlementsPage />,
               },
               {
                 path: ROUTE_PATHS.receivables,

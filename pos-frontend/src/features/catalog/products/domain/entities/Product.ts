@@ -4,11 +4,14 @@ export type Product = {
   id: number
   categoryId: number
   categoryName: string
+  supplierId: number | null
+  supplierName: string | null
   barcode: string
   name: string
   description: string | null
   unit: ProductUnit
   costPrice: number
+  costPriceKnown: boolean
   salePrice: number
   currentStock: number
   minimumStock: number
@@ -20,6 +23,7 @@ export type Product = {
 export type ProductFilters = {
   search?: string
   categoryId?: number | null
+  supplierId?: number | null
   lowStock?: boolean
   page?: number
   size?: number
@@ -28,6 +32,7 @@ export type ProductFilters = {
 
 export type ProductMutation = {
   categoryId: number
+  supplierId?: number | null
   barcode: string
   name: string
   description?: string | null

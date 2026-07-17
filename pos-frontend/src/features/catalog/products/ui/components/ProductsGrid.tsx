@@ -67,6 +67,7 @@ export const ProductsGrid = ({
         ),
       },
       { field: 'categoryName', headerName: 'Categoria', minWidth: 170 },
+      { field: 'supplierName', headerName: 'Proveedor', minWidth: 170, valueFormatter: ({ value }) => value ? String(value) : 'Sin proveedor' },
       {
         field: 'unit',
         headerName: 'Unidad',
@@ -77,7 +78,13 @@ export const ProductsGrid = ({
         field: 'costPrice',
         headerName: 'Precio costo',
         minWidth: 140,
-        valueFormatter: ({ value }) => formatCurrency(Number(value)),
+        cellRenderer: ({ data }: { data?: Product }) => data ? (
+          data.costPriceKnown ? formatCurrency(data.costPrice) : (
+            <Tooltip title="No se encontraba registrado en el archivo original.">
+              <span>—</span>
+            </Tooltip>
+          )
+        ) : null,
       },
       {
         field: 'salePrice',

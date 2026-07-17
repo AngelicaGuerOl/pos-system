@@ -17,4 +17,3 @@ export const productDependencies = {
   updateProductUseCase: new UpdateProductUseCase(productRepository),
   deactivateProductUseCase: new DeactivateProductUseCase(productRepository),
 } as const
-
