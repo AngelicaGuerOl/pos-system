@@ -5,6 +5,10 @@ node_modules/
 dist/
 target/
 
+MERCANCIA/
+legacy-import/
+legacy-import-reports/
+
 .DS_Store
 .idea/
 .vscode/
