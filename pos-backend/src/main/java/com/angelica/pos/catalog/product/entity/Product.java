@@ -1,6 +1,7 @@
 package com.angelica.pos.catalog.product.entity;
 
 import com.angelica.pos.catalog.category.entity.Category;
+import com.angelica.pos.supplier.entity.Supplier;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -45,6 +46,10 @@ public class Product {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id")
+    private Supplier supplier;
+
     @NotBlank
     @Size(max = 50)
     @Column(name = "barcode", nullable = false, length = 50, unique = true)
@@ -68,6 +73,10 @@ public class Product {
     @DecimalMin(value = "0.00")
     @Column(name = "cost_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal costPrice;
+
+    @Builder.Default
+    @Column(name = "cost_price_known", nullable = false)
+    private Boolean costPriceKnown = true;
 
     @NotNull
     @DecimalMin(value = "0.00")
@@ -101,6 +110,9 @@ public class Product {
         }
         if (createdAt == null) {
             createdAt = OffsetDateTime.now();
+        }
+        if (costPriceKnown == null) {
+            costPriceKnown = true;
         }
     }
 

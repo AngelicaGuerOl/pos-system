@@ -37,6 +37,22 @@ import com.angelica.pos.sale.returning.exception.SaleReturnNotAllowedException;
 import com.angelica.pos.sale.returning.exception.SaleReturnNotFoundException;
 import com.angelica.pos.sale.returning.exception.SaleReturnQuantityExceededException;
 import com.angelica.pos.security.InvalidJwtException;
+import com.angelica.pos.supplier.entry.exception.SupplierEntryInClosedPeriodException;
+import com.angelica.pos.supplier.entry.exception.SupplierEntryNotFoundException;
+import com.angelica.pos.supplier.exception.ProductSupplierMismatchException;
+import com.angelica.pos.supplier.exception.SupplierAlreadyExistsException;
+import com.angelica.pos.supplier.exception.SupplierInactiveException;
+import com.angelica.pos.supplier.exception.SupplierInventoryBaselineAlreadyExistsException;
+import com.angelica.pos.supplier.exception.SupplierInventoryBaselineNotFoundException;
+import com.angelica.pos.supplier.exception.SupplierNotFoundException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementAlreadyFinalizedException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementDraftAlreadyExistsException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementDraftExportNotAllowedException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementIncompleteClosingException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementInvalidDeliveredAmountException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementInvalidPeriodException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementNotFoundException;
+import com.angelica.pos.supplier.settlement.exception.SupplierSettlementNotesRequiredException;
 import com.angelica.pos.user.exception.UserAlreadyExistsException;
 import com.angelica.pos.user.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -89,6 +105,56 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SupplierNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleSupplierNotFound(
+            SupplierNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            SupplierAlreadyExistsException.class,
+            SupplierInactiveException.class,
+            ProductSupplierMismatchException.class,
+            SupplierInventoryBaselineAlreadyExistsException.class,
+            SupplierEntryInClosedPeriodException.class,
+            SupplierSettlementAlreadyFinalizedException.class,
+            SupplierSettlementDraftAlreadyExistsException.class,
+            SupplierSettlementInvalidPeriodException.class,
+            SupplierSettlementDraftExportNotAllowedException.class
+    })
+    public ResponseEntity<ErrorResponse> handleSupplierConflict(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            SupplierInventoryBaselineNotFoundException.class,
+            SupplierEntryNotFoundException.class,
+            SupplierSettlementNotFoundException.class
+    })
+    public ResponseEntity<ErrorResponse> handleSupplierResourceNotFound(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler({
+            SupplierSettlementIncompleteClosingException.class,
+            SupplierSettlementInvalidDeliveredAmountException.class,
+            SupplierSettlementNotesRequiredException.class
+    })
+    public ResponseEntity<ErrorResponse> handleSupplierBadRequest(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request, null);
     }
 
     @ExceptionHandler(CustomerNotFoundException.class)

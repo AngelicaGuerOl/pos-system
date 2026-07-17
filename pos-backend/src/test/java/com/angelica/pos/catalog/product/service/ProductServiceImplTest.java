@@ -11,6 +11,7 @@ import com.angelica.pos.catalog.product.mapper.ProductMapper;
 import com.angelica.pos.catalog.product.repository.ProductRepository;
 import com.angelica.pos.inventory.movement.service.InventoryMovementService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.supplier.repository.SupplierRepository;
 import com.angelica.pos.user.entity.Role;
 import com.angelica.pos.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,7 @@ class ProductServiceImplTest {
 
     private ProductRepository productRepository;
     private CategoryRepository categoryRepository;
+    private SupplierRepository supplierRepository;
     private ProductMapper productMapper;
     private InventoryMovementService inventoryMovementService;
     private ProductServiceImpl productService;
@@ -37,11 +39,13 @@ class ProductServiceImplTest {
     void setUp() {
         productRepository = mock(ProductRepository.class);
         categoryRepository = mock(CategoryRepository.class);
+        supplierRepository = mock(SupplierRepository.class);
         productMapper = mock(ProductMapper.class);
         inventoryMovementService = mock(InventoryMovementService.class);
         productService = new ProductServiceImpl(
                 productRepository,
                 categoryRepository,
+                supplierRepository,
                 productMapper,
                 inventoryMovementService
         );

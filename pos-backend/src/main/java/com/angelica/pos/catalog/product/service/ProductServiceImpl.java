@@ -14,6 +14,10 @@ import com.angelica.pos.catalog.product.repository.ProductRepository;
 import com.angelica.pos.inventory.movement.service.InventoryMovementService;
 import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.shared.response.PageResponse;
+import com.angelica.pos.supplier.entity.Supplier;
+import com.angelica.pos.supplier.exception.SupplierInactiveException;
+import com.angelica.pos.supplier.exception.SupplierNotFoundException;
+import com.angelica.pos.supplier.repository.SupplierRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +35,7 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final SupplierRepository supplierRepository;
     private final ProductMapper productMapper;
     private final InventoryMovementService inventoryMovementService;
 
@@ -38,6 +43,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductResponse create(ProductRequest request, AuthenticatedUser authenticatedUser) {
         Category category = findActiveCategoryById(request.getCategoryId());
+        Supplier supplier = findOptionalActiveSupplier(request.getSupplierId());
         String normalizedBarcode = normalizeBarcode(request.getBarcode());
         validateSalePrice(request.getSalePrice(), request.getCostPrice());
 
@@ -47,9 +53,11 @@ public class ProductServiceImpl implements ProductService {
 
         Product product = productMapper.toEntity(request);
         product.setCategory(category);
+        product.setSupplier(supplier);
         product.setBarcode(normalizedBarcode);
         product.setName(normalizeName(request.getName()));
         product.setDescription(normalizeDescription(request.getDescription()));
+        product.setCostPriceKnown(true);
         BigDecimal initialStock = product.getCurrentStock();
         product.setCurrentStock(BigDecimal.ZERO);
 
@@ -65,6 +73,7 @@ public class ProductServiceImpl implements ProductService {
     public PageResponse<ProductResponse> findAllActive(
             String search,
             Long categoryId,
+            Long supplierId,
             Boolean lowStock,
             Pageable pageable
     ) {
@@ -72,10 +81,11 @@ public class ProductServiceImpl implements ProductService {
 
         String normalizedSearch = normalizeSearch(search);
         Page<Product> productsPage = normalizedSearch == null
-                ? productRepository.findAllActiveWithFilters(categoryId, lowStock, pageable)
+                ? productRepository.findAllActiveWithFilters(categoryId, supplierId, lowStock, pageable)
                 : productRepository.findAllActiveWithSearchAndFilters(
                         normalizedSearch,
                         categoryId,
+                        supplierId,
                         lowStock,
                         pageable
                 );
@@ -115,6 +125,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse update(Long id, ProductUpdateRequest request) {
         Product product = findActiveProductById(id);
         Category category = findActiveCategoryById(request.getCategoryId());
+        Supplier supplier = findOptionalActiveSupplier(request.getSupplierId());
         String normalizedBarcode = normalizeBarcode(request.getBarcode());
         validateSalePrice(request.getSalePrice(), request.getCostPrice());
 
@@ -124,9 +135,11 @@ public class ProductServiceImpl implements ProductService {
 
         productMapper.updateEntityFromRequest(request, product);
         product.setCategory(category);
+        product.setSupplier(supplier);
         product.setBarcode(normalizedBarcode);
         product.setName(normalizeName(request.getName()));
         product.setDescription(normalizeDescription(request.getDescription()));
+        product.setCostPriceKnown(true);
 
         return productMapper.toResponse(product);
     }
@@ -146,6 +159,17 @@ public class ProductServiceImpl implements ProductService {
     private Category findActiveCategoryById(Long id) {
         return categoryRepository.findByIdAndActiveTrue(id)
                 .orElseThrow(() -> new CategoryNotFoundException(id));
+    }
+
+    private Supplier findOptionalActiveSupplier(Long id) {
+        if (id == null) {
+            return null;
+        }
+        Supplier supplier = supplierRepository.findById(id).orElseThrow(() -> new SupplierNotFoundException(id));
+        if (!Boolean.TRUE.equals(supplier.getActive())) {
+            throw new SupplierInactiveException(id);
+        }
+        return supplier;
     }
 
     private void validatePageSize(Pageable pageable) {

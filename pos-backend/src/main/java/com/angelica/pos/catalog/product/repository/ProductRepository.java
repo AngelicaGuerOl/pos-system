@@ -51,38 +51,79 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByBarcodeIgnoreCaseAndActiveTrue(String barcode);
 
-    @EntityGraph(attributePaths = "category")
+    Optional<Product> findByBarcodeIgnoreCase(String barcode);
+
+    List<Product> findBySupplierId(Long supplierId);
+
+    @EntityGraph(attributePaths = {"category", "supplier"})
     @Query("""
             SELECT p
             FROM Product p
             JOIN p.category c
+            LEFT JOIN p.supplier s
             WHERE p.active = true
               AND (
                     LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
                     OR LOWER(p.barcode) LIKE LOWER(CONCAT('%', :search, '%'))
                   )
               AND (:categoryId IS NULL OR c.id = :categoryId)
+              AND (:supplierId IS NULL OR s.id = :supplierId)
               AND (:lowStock IS NULL OR :lowStock = false OR p.currentStock <= p.minimumStock)
             """)
     Page<Product> findAllActiveWithSearchAndFilters(
             @Param("search") String search,
             @Param("categoryId") Long categoryId,
+            @Param("supplierId") Long supplierId,
             @Param("lowStock") Boolean lowStock,
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = "category")
+    @EntityGraph(attributePaths = {"category", "supplier"})
     @Query("""
             SELECT p
             FROM Product p
             JOIN p.category c
+            LEFT JOIN p.supplier s
             WHERE p.active = true
               AND (:categoryId IS NULL OR c.id = :categoryId)
+              AND (:supplierId IS NULL OR s.id = :supplierId)
               AND (:lowStock IS NULL OR :lowStock = false OR p.currentStock <= p.minimumStock)
             """)
     Page<Product> findAllActiveWithFilters(
             @Param("categoryId") Long categoryId,
+            @Param("supplierId") Long supplierId,
             @Param("lowStock") Boolean lowStock,
             Pageable pageable
     );
+
+    @EntityGraph(attributePaths = {"category", "supplier"})
+    @Query("""
+            SELECT p
+            FROM Product p
+            JOIN p.category c
+            JOIN p.supplier s
+            WHERE p.active = true
+              AND s.id = :supplierId
+              AND (
+                    :search IS NULL
+                    OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%'))
+                    OR LOWER(p.barcode) LIKE LOWER(CONCAT('%', :search, '%'))
+                  )
+            """)
+    Page<Product> findActiveBySupplier(
+            @Param("supplierId") Long supplierId,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"category", "supplier"})
+    @Query("""
+            SELECT p
+            FROM Product p
+            JOIN p.category c
+            JOIN p.supplier s
+            WHERE p.active = true
+              AND s.id = :supplierId
+            """)
+    List<Product> findAllActiveBySupplierId(@Param("supplierId") Long supplierId);
 }

@@ -17,4 +17,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findAllByActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(String search);
 
     Optional<Category> findByIdAndActiveTrue(Long id);
+
+    Optional<Category> findByNameIgnoreCase(String name);
 }

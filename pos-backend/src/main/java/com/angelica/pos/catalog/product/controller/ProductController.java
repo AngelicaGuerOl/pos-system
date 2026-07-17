@@ -59,10 +59,13 @@ public class ProductController {
             @RequestParam(required = false)
             @Positive(message = "Category id must be positive")
             Long categoryId,
+            @RequestParam(required = false)
+            @Positive(message = "Supplier id must be positive")
+            Long supplierId,
             @RequestParam(required = false) Boolean lowStock,
             @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return ResponseEntity.ok(productService.findAllActive(search, categoryId, lowStock, pageable));
+        return ResponseEntity.ok(productService.findAllActive(search, categoryId, supplierId, lowStock, pageable));
     }
 
     @GetMapping("/{id}")

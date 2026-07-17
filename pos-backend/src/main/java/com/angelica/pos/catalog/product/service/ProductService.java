@@ -11,7 +11,13 @@ public interface ProductService {
 
     ProductResponse create(ProductRequest request, AuthenticatedUser authenticatedUser);
 
-    PageResponse<ProductResponse> findAllActive(String search, Long categoryId, Boolean lowStock, Pageable pageable);
+    PageResponse<ProductResponse> findAllActive(
+            String search,
+            Long categoryId,
+            Long supplierId,
+            Boolean lowStock,
+            Pageable pageable
+    );
 
     ProductResponse findById(Long id);
 

@@ -17,6 +17,8 @@ public class ProductUpdateRequest {
     @NotNull(message = "La categoria es obligatoria")
     private Long categoryId;
 
+    private Long supplierId;
+
     @NotBlank(message = "El codigo de barras es obligatorio")
     @Size(max = 50, message = "El codigo de barras no debe superar los 50 caracteres")
     private String barcode;

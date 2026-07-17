@@ -40,9 +40,12 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
     private static final int MAX_QUANTITY_INTEGER_DIGITS = 8;
     private static final int MAX_QUANTITY_SCALE = 2;
     private static final String PRODUCT_CREATION_SOURCE_TYPE = "PRODUCT_CREATION";
-    private static final String SALE_SOURCE_TYPE = "SALE";
+    private static final String SALE_SOURCE_TYPE = "SALE_ITEM";
     private static final String SALE_RETURN_SOURCE_TYPE = "SALE_RETURN";
     private static final String SALE_CANCELLATION_SOURCE_TYPE = "SALE_CANCELLATION";
+    private static final String SUPPLIER_INITIAL_STOCK_SOURCE_TYPE = "SUPPLIER_INITIAL_STOCK";
+    private static final String SUPPLIER_ENTRY_SOURCE_TYPE = "SUPPLIER_ENTRY";
+    private static final String SUPPLIER_SETTLEMENT_SOURCE_TYPE = "SUPPLIER_SETTLEMENT";
 
     private final InventoryMovementRepository inventoryMovementRepository;
     private final ProductRepository productRepository;
@@ -203,6 +206,67 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
                 InventoryMovementType.SALE_CANCELLATION,
                 SALE_CANCELLATION_SOURCE_TYPE,
                 saleCancellationId,
+                user
+        );
+    }
+
+    @Override
+    @Transactional
+    public InventoryMovement registerSupplierInitialStockMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long baselineItemId,
+            User user
+    ) {
+        return registerProductMovement(
+                lockedProduct,
+                quantity,
+                "Inventario inicial por proveedor",
+                InventoryMovementDirection.IN,
+                InventoryMovementType.SUPPLIER_INITIAL_STOCK,
+                SUPPLIER_INITIAL_STOCK_SOURCE_TYPE,
+                baselineItemId,
+                user
+        );
+    }
+
+    @Override
+    @Transactional
+    public InventoryMovement registerSupplierEntryMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long entryItemId,
+            User user
+    ) {
+        return registerProductMovement(
+                lockedProduct,
+                quantity,
+                "Entrada de mercancia por proveedor",
+                InventoryMovementDirection.IN,
+                InventoryMovementType.SUPPLIER_ENTRY,
+                SUPPLIER_ENTRY_SOURCE_TYPE,
+                entryItemId,
+                user
+        );
+    }
+
+    @Override
+    @Transactional
+    public InventoryMovement registerSupplierSettlementAdjustmentMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            InventoryMovementDirection direction,
+            Long settlementItemId,
+            User user
+    ) {
+        return registerProductMovement(
+                lockedProduct,
+                quantity,
+                "Ajuste por corte de proveedor",
+                direction,
+                InventoryMovementType.SUPPLIER_SETTLEMENT_ADJUSTMENT,
+                SUPPLIER_SETTLEMENT_SOURCE_TYPE,
+                settlementItemId,
                 user
         );
     }
@@ -444,7 +508,11 @@ public class InventoryMovementServiceImpl implements InventoryMovementService {
                 || (type == InventoryMovementType.SALE && direction == InventoryMovementDirection.OUT)
                 || (type == InventoryMovementType.RETURN && direction == InventoryMovementDirection.IN)
                 || (type == InventoryMovementType.SALE_RETURN && direction == InventoryMovementDirection.IN)
-                || (type == InventoryMovementType.SALE_CANCELLATION && direction == InventoryMovementDirection.IN);
+                || (type == InventoryMovementType.SALE_CANCELLATION && direction == InventoryMovementDirection.IN)
+                || (type == InventoryMovementType.SUPPLIER_INITIAL_STOCK && direction == InventoryMovementDirection.IN)
+                || (type == InventoryMovementType.SUPPLIER_ENTRY && direction == InventoryMovementDirection.IN)
+                || (type == InventoryMovementType.SUPPLIER_SETTLEMENT_ADJUSTMENT
+                    && (direction == InventoryMovementDirection.IN || direction == InventoryMovementDirection.OUT));
 
         if (!valid) {
             throw new IllegalArgumentException("Inventory movement type and direction are not compatible");

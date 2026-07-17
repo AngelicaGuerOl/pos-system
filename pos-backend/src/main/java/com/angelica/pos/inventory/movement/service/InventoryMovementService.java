@@ -64,6 +64,28 @@ public interface InventoryMovementService {
             User user
     );
 
+    InventoryMovement registerSupplierInitialStockMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long baselineItemId,
+            User user
+    );
+
+    InventoryMovement registerSupplierEntryMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            Long entryItemId,
+            User user
+    );
+
+    InventoryMovement registerSupplierSettlementAdjustmentMovement(
+            Product lockedProduct,
+            BigDecimal quantity,
+            InventoryMovementDirection direction,
+            Long settlementItemId,
+            User user
+    );
+
     InventoryMovementResponse findById(Long id);
 
     PageResponse<InventoryMovementResponse> findAll(

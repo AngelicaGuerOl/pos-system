@@ -14,11 +14,14 @@ public class ProductResponse {
     private Long id;
     private Long categoryId;
     private String categoryName;
+    private Long supplierId;
+    private String supplierName;
     private String barcode;
     private String name;
     private String description;
     private ProductUnit unit;
     private BigDecimal costPrice;
+    private Boolean costPriceKnown;
     private BigDecimal salePrice;
     private BigDecimal currentStock;
     private BigDecimal minimumStock;
