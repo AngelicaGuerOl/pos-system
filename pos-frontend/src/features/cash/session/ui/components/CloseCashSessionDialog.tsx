@@ -183,12 +183,10 @@ export const CloseCashSessionDialog = ({
     ? null
     : toCents(countedAmount) - toCents(expectedAmount)
   const notesLength = notesText.length
-  const notesRequired = estimatedDifferenceCents !== null && estimatedDifferenceCents !== 0
   const formValid = Boolean(
     countedAmount !== null
       && countedAmount >= 0
-      && notesLength <= 255
-      && (!notesRequired || notesText.trim().length > 0),
+      && notesLength <= 255,
   )
 
   useEffect(() => {
@@ -213,9 +211,6 @@ export const CloseCashSessionDialog = ({
     const nextErrors: FormErrors = {}
     const nextAmount = toAmount(countedAmountText)
     const trimmedNotes = notesText.trim()
-    const nextDifferenceCents = nextAmount === null
-      ? null
-      : toCents(nextAmount) - toCents(expectedAmount)
 
     if (nextAmount === null) {
       nextErrors.countedAmount = 'Ingresa un monto valido con maximo 2 decimales.'
@@ -225,8 +220,6 @@ export const CloseCashSessionDialog = ({
 
     if (notesText.length > 255) {
       nextErrors.notes = 'Las observaciones deben tener maximo 255 caracteres.'
-    } else if (nextDifferenceCents !== null && nextDifferenceCents !== 0 && trimmedNotes.length === 0) {
-      nextErrors.notes = 'Las observaciones son obligatorias cuando hay faltante o sobrante.'
     }
 
     setErrors(nextErrors)

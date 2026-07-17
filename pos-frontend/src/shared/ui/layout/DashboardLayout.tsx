@@ -43,6 +43,7 @@ import { useState, type ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ChangePasswordForm, useAuth } from '../../../features/auth'
 import type { UserRole } from '../../../features/auth'
+import logo from '../../../assets/logo-cropped.png'
 import { ROUTE_PATHS } from '../../routes/routePaths'
 
 const DRAWER_WIDTH = 280
@@ -216,24 +217,16 @@ export const DashboardLayout = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar sx={{ px: 2.5 }}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Avatar
+          <Box
+            component="img"
+            alt="NovaPOS"
+            src={logo}
             sx={{
-              bgcolor: 'primary.main',
-              borderRadius: 2,
-              color: 'primary.contrastText',
-              height: 40,
-              width: 40,
+              height: 'auto',
+              objectFit: 'contain',
+              width: 168,
             }}
-            variant="rounded"
-          >
-            <PointOfSaleRoundedIcon />
-          </Avatar>
-          <Box>
-            <Typography sx={{ fontWeight: 800, lineHeight: 1.1 }}>POS System</Typography>
-            <Typography color="text.secondary" variant="caption">
-              Punto de venta
-            </Typography>
-          </Box>
+          />
         </Stack>
       </Toolbar>
 

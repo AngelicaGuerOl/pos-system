@@ -13,6 +13,6 @@ public class CashSessionCloseRequest {
     @Schema(description = "Efectivo contado al cierre", example = "1450.50")
     private BigDecimal countedAmount;
 
-    @Schema(description = "Observaciones del cierre. Obligatorio cuando existe diferencia.", example = "Diferencia revisada con supervisor", nullable = true)
+    @Schema(description = "Observaciones opcionales del cierre.", example = "Diferencia revisada con supervisor", nullable = true)
     private String notes;
 }

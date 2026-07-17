@@ -1,6 +1,5 @@
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
-import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
 import {
   Alert,
   Box,
@@ -13,6 +12,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
+import logo from '../../../../assets/logo-cropped.png'
 import { useLogin } from '../hooks/useLogin'
 import { PasswordVisibilityAdornment } from './PasswordVisibilityAdornment'
 
@@ -40,28 +40,20 @@ export const LoginForm = () => {
       <Stack spacing={3}>
         <Stack spacing={1.5} sx={{ alignItems: 'center' }}>
           <Box
+            component="img"
+            alt="NovaPOS"
+            src={logo}
             sx={{
-              alignItems: 'center',
-              bgcolor: 'primary.main',
-              borderRadius: 2,
-              color: 'primary.contrastText',
-              display: 'flex',
-              height: 52,
-              justifyContent: 'center',
-              width: 52,
+              height: 'auto',
+              maxWidth: '100%',
+              objectFit: 'contain',
+              width: { xs: 250, sm: 310 },
             }}
-          >
-            <PointOfSaleRoundedIcon />
-          </Box>
+          />
 
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography component="h1" sx={{ fontWeight: 800 }} variant="h4">
-              POS System
-            </Typography>
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-              Inicia sesion para continuar
-            </Typography>
-          </Box>
+          <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
+            Inicia sesion para continuar
+          </Typography>
         </Stack>
 
         {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}

@@ -62,7 +62,6 @@ public class CashSession {
     @Column(name = "closed_at")
     private OffsetDateTime closedAt;
 
-    @DecimalMin(value = "0.00")
     @Column(name = "expected_cash", precision = 10, scale = 2)
     private BigDecimal expectedCash;
 

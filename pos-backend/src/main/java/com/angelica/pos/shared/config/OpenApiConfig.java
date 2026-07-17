@@ -36,7 +36,7 @@ public class OpenApiConfig {
     public OpenAPI posOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("POS System API")
+                        .title("NovaPOS API")
                         .version("v1")
                         .description("""
                                 API REST del sistema POS para autenticación, catálogos, ventas, caja,
@@ -50,7 +50,7 @@ public class OpenApiConfig {
                                 5. Ejecuta endpoints protegidos. Swagger UI enviará `Authorization: Bearer {token}`.
                                 """)
                         .contact(new Contact()
-                                .name("POS System")
+                                .name("NovaPOS")
                                 .email("support@example.com")))
                 .servers(List.of(new Server()
                         .url("http://localhost:8080")

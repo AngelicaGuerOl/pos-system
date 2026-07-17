@@ -111,7 +111,7 @@ public class CashSessionServiceImpl implements CashSessionService {
         CashSessionClosingSummaryResponse preview = buildLiveSummary(cashSession, null, null);
         BigDecimal expectedAmount = preview.getCashSummary().getExpectedAmount();
         BigDecimal differenceAmount = countedAmount.subtract(expectedAmount);
-        String notes = normalizeClosingNotes(request == null ? null : request.getNotes(), differenceAmount);
+        String notes = normalizeClosingNotes(request == null ? null : request.getNotes());
 
         cashSession.setExpectedCash(expectedAmount);
         cashSession.setCountedCash(countedAmount);
@@ -306,7 +306,7 @@ public class CashSessionServiceImpl implements CashSessionService {
         return countedAmount;
     }
 
-    private String normalizeClosingNotes(String notes, BigDecimal differenceAmount) {
+    private String normalizeClosingNotes(String notes) {
         String normalizedNotes = null;
         if (notes != null) {
             normalizedNotes = notes.trim();
@@ -315,9 +315,6 @@ public class CashSessionServiceImpl implements CashSessionService {
             } else if (normalizedNotes.length() > 255) {
                 throw new IllegalArgumentException("Las observaciones deben tener maximo 255 caracteres");
             }
-        }
-        if (differenceAmount.compareTo(BigDecimal.ZERO) != 0 && normalizedNotes == null) {
-            throw new IllegalArgumentException("La observacion es obligatoria cuando existe faltante o sobrante");
         }
         return normalizedNotes;
     }

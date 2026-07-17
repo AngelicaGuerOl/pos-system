@@ -251,12 +251,13 @@ class CashSessionServiceImplTest {
     }
 
     @Test
-    void closeCurrentRequiresNotesWhenDifferenceIsNotZero() {
+    void closeCurrentAllowsNegativeExpectedCashAndOptionalNotes() {
         User user = buildUser();
-        CashSession cashSession = buildOpenSession(10L, user, "100.00");
+        CashSession cashSession = buildOpenSession(10L, user, "50.00");
         when(userRepository.findByIdAndActiveTrue(user.getId())).thenReturn(Optional.of(user));
         when(cashSessionRepository.findByOpenedByIdAndStatusForUpdate(user.getId(), CashSessionStatus.OPEN))
                 .thenReturn(Optional.of(cashSession));
+        when(cashSessionRepository.saveAndFlush(cashSession)).thenReturn(cashSession);
         stubClosingTotals(
                 cashSession.getId(),
                 new SalesClosingTotals(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO),
@@ -265,19 +266,27 @@ class CashSessionServiceImplTest {
                         BigDecimal.ZERO,
                         BigDecimal.ZERO,
                         BigDecimal.ZERO,
+                        new BigDecimal("100.00"),
                         BigDecimal.ZERO,
                         BigDecimal.ZERO,
-                        BigDecimal.ZERO,
-                        BigDecimal.ZERO
+                        new BigDecimal("100.00")
                 ),
                 new OperationsClosingTotals(BigDecimal.ZERO, BigDecimal.ZERO),
                 new OperationsClosingTotals(BigDecimal.ZERO, BigDecimal.ZERO)
         );
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> cashSessionService.closeCurrent(buildCloseRequest("90.00", "  "), new AuthenticatedUser(user))
+        CashSessionClosingSummaryResponse result = cashSessionService.closeCurrent(
+                buildCloseRequest("20.00", "  "),
+                new AuthenticatedUser(user)
         );
+
+        assertEquals(CashSessionStatus.CLOSED, cashSession.getStatus());
+        assertEquals(new BigDecimal("-50.00"), cashSession.getExpectedCash());
+        assertEquals(new BigDecimal("20.00"), cashSession.getCountedCash());
+        assertEquals(new BigDecimal("70.00"), cashSession.getCashDifference());
+        assertNull(cashSession.getClosingNotes());
+        assertEquals(new BigDecimal("-50.00"), result.getCashSummary().getExpectedAmount());
+        assertEquals(new BigDecimal("70.00"), result.getDifferenceAmount());
     }
 
     @Test
