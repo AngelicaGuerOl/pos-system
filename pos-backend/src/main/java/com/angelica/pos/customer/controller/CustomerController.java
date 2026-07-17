@@ -4,11 +4,14 @@ import com.angelica.pos.customer.dto.CustomerRequest;
 import com.angelica.pos.customer.dto.CustomerResponse;
 import com.angelica.pos.customer.dto.CustomerUpdateRequest;
 import com.angelica.pos.customer.service.CustomerService;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -31,6 +34,7 @@ import java.net.URI;
 @RequestMapping("/api/customers")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.CUSTOMERS)
 public class CustomerController {
 
     private final CustomerService customerService;
@@ -51,7 +55,7 @@ public class CustomerController {
             @RequestParam(required = false)
             @Size(max = 100, message = "Search must have at most 100 characters")
             String search,
-            @PageableDefault(size = 10, sort = "firstName", direction = Sort.Direction.ASC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "firstName", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return ResponseEntity.ok(customerService.findAllActive(search, pageable));
     }

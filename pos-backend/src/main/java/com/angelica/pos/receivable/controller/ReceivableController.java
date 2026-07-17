@@ -4,9 +4,12 @@ import com.angelica.pos.receivable.dto.ReceivableDetailResponse;
 import com.angelica.pos.receivable.dto.ReceivableSummaryResponse;
 import com.angelica.pos.receivable.entity.ReceivableStatus;
 import com.angelica.pos.receivable.service.ReceivableService;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -23,6 +26,7 @@ import java.time.OffsetDateTime;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.RECEIVABLES)
 public class ReceivableController {
 
     private final ReceivableService receivableService;
@@ -42,7 +46,7 @@ public class ReceivableController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             OffsetDateTime to,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(receivableService.findAll(customerId, saleId, status, from, to, pageable));
     }
@@ -62,7 +66,7 @@ public class ReceivableController {
             @Positive(message = "Customer id must be positive")
             Long customerId,
             @RequestParam(required = false) ReceivableStatus status,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(receivableService.findByCustomer(customerId, status, pageable));
     }

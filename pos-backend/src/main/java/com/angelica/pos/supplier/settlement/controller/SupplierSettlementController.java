@@ -1,6 +1,7 @@
 package com.angelica.pos.supplier.settlement.controller;
 
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
 import com.angelica.pos.supplier.settlement.dto.SupplierSettlementCreateRequest;
 import com.angelica.pos.supplier.settlement.dto.SupplierSettlementResponse;
@@ -8,9 +9,11 @@ import com.angelica.pos.supplier.settlement.dto.SupplierSettlementUpdateRequest;
 import com.angelica.pos.supplier.settlement.entity.SupplierSettlementStatus;
 import com.angelica.pos.supplier.settlement.service.SupplierSettlementExportService;
 import com.angelica.pos.supplier.settlement.service.SupplierSettlementService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -36,6 +39,7 @@ import java.time.LocalDate;
 @RequestMapping("/api/supplier-settlements")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.SUPPLIER_SETTLEMENTS)
 public class SupplierSettlementController {
 
     private static final MediaType XLSX_MEDIA_TYPE = MediaType.parseMediaType(
@@ -79,7 +83,7 @@ public class SupplierSettlementController {
             @RequestParam(required = false) SupplierSettlementStatus status,
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
-            @PageableDefault(size = 10, sort = "periodEnd", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "periodEnd", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(settlementService.findAll(supplierId, status, from, to, pageable));
     }

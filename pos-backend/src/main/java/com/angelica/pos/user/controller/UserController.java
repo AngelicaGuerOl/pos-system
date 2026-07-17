@@ -1,14 +1,17 @@
 package com.angelica.pos.user.controller;
 
 import com.angelica.pos.shared.response.PageResponse;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.user.dto.UserCreateRequest;
 import com.angelica.pos.user.dto.UserResponse;
 import com.angelica.pos.user.dto.UserUpdateRequest;
 import com.angelica.pos.user.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -31,6 +34,7 @@ import java.net.URI;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.USERS)
 public class UserController {
 
     private final UserService userService;
@@ -51,7 +55,7 @@ public class UserController {
             @RequestParam(required = false)
             @Size(max = 100, message = "Search must have at most 100 characters")
             String search,
-            @PageableDefault(size = 10, sort = "username", direction = Sort.Direction.ASC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "username", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return ResponseEntity.ok(userService.findAllActive(search, pageable));
     }

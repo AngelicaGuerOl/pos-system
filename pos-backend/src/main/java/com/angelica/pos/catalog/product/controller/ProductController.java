@@ -5,11 +5,14 @@ import com.angelica.pos.catalog.product.dto.ProductResponse;
 import com.angelica.pos.catalog.product.dto.ProductUpdateRequest;
 import com.angelica.pos.catalog.product.service.ProductService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -33,6 +36,7 @@ import java.net.URI;
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.PRODUCTS)
 public class ProductController {
 
     private final ProductService productService;
@@ -63,7 +67,7 @@ public class ProductController {
             @Positive(message = "Supplier id must be positive")
             Long supplierId,
             @RequestParam(required = false) Boolean lowStock,
-            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return ResponseEntity.ok(productService.findAllActive(search, categoryId, supplierId, lowStock, pageable));
     }

@@ -6,10 +6,13 @@ import com.angelica.pos.cash.session.dto.CashSessionOpenRequest;
 import com.angelica.pos.cash.session.dto.CashSessionResponse;
 import com.angelica.pos.cash.session.service.CashSessionService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -30,6 +33,7 @@ import java.net.URI;
 @RequestMapping("/api/cash-sessions")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.CASH_SESSIONS)
 public class CashSessionController {
 
     private final CashSessionService cashSessionService;
@@ -92,7 +96,7 @@ public class CashSessionController {
 
     @GetMapping
     public ResponseEntity<PageResponse<CashSessionResponse>> findAll(
-            @PageableDefault(size = 10, sort = "openedAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "openedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(cashSessionService.findAll(pageable));
     }

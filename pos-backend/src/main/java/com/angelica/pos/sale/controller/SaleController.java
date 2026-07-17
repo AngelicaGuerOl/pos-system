@@ -8,10 +8,13 @@ import com.angelica.pos.sale.entity.SaleStatus;
 import com.angelica.pos.sale.entity.SaleType;
 import com.angelica.pos.sale.service.SaleService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -35,6 +38,7 @@ import java.time.OffsetDateTime;
 @RequestMapping("/api/sales")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.SALES)
 public class SaleController {
 
     private final SaleService saleService;
@@ -56,7 +60,7 @@ public class SaleController {
     @GetMapping("/current-session")
     public ResponseEntity<PageResponse<SaleSummaryResponse>> findCurrentSession(
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(saleService.findCurrentSession(authenticatedUser, pageable));
     }
@@ -93,7 +97,7 @@ public class SaleController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             OffsetDateTime to,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Long effectiveId = id == null ? folio : id;
         return ResponseEntity.ok(saleService.findAll(

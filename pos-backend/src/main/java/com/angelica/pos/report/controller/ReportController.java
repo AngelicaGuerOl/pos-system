@@ -2,6 +2,8 @@ package com.angelica.pos.report.controller;
 
 import com.angelica.pos.report.dto.OperationsSummaryResponse;
 import com.angelica.pos.report.service.ReportService;
+import com.angelica.pos.shared.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.time.LocalDate;
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.REPORTS)
 public class ReportController {
 
     private final ReportService reportService;

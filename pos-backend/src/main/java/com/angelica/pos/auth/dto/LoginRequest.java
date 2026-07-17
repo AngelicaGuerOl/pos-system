@@ -1,5 +1,6 @@
 package com.angelica.pos.auth.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,9 +9,11 @@ import lombok.Setter;
 @Setter
 public class LoginRequest {
 
+    @Schema(description = "Nombre de usuario", example = "admin")
     @NotBlank(message = "El usuario es obligatorio")
     private String username;
 
+    @Schema(description = "Contraseña del usuario", example = "Password123!", format = "password", writeOnly = true)
     @NotBlank(message = "La contrasena es obligatoria")
     private String password;
 }

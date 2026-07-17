@@ -5,10 +5,13 @@ import com.angelica.pos.sale.returning.dto.SaleReturnRequest;
 import com.angelica.pos.sale.returning.dto.SaleReturnSummaryResponse;
 import com.angelica.pos.sale.returning.service.SaleReturnService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -27,6 +30,7 @@ import java.net.URI;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.SALE_RETURNS)
 public class SaleReturnController {
 
     private final SaleReturnService saleReturnService;
@@ -54,7 +58,7 @@ public class SaleReturnController {
             @Positive(message = "Sale id must be positive")
             Long saleId,
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(saleReturnService.findBySale(saleId, authenticatedUser, pageable));
     }

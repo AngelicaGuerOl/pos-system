@@ -4,6 +4,8 @@ import com.angelica.pos.sale.cancellation.dto.SaleCancellationRequest;
 import com.angelica.pos.sale.cancellation.dto.SaleCancellationResponse;
 import com.angelica.pos.sale.cancellation.service.SaleCancellationService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.net.URI;
 @RequestMapping("/api/sales/{saleId}/cancel")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.SALE_CANCELLATIONS)
 public class SaleCancellationController {
 
     private final SaleCancellationService saleCancellationService;

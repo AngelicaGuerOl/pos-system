@@ -1,6 +1,7 @@
 package com.angelica.pos.supplier.controller;
 
 import com.angelica.pos.catalog.product.dto.ProductResponse;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
 import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.supplier.dto.SupplierInventoryBaselineRequest;
@@ -11,10 +12,12 @@ import com.angelica.pos.supplier.service.SupplierInventoryBaselineService;
 import com.angelica.pos.supplier.service.SupplierService;
 import com.angelica.pos.supplier.entry.dto.SupplierEntryResponse;
 import com.angelica.pos.supplier.entry.service.SupplierEntryService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -38,6 +41,7 @@ import java.net.URI;
 @RequestMapping("/api/suppliers")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.SUPPLIERS)
 public class SupplierController {
 
     private final SupplierService supplierService;
@@ -58,7 +62,7 @@ public class SupplierController {
     public ResponseEntity<PageResponse<SupplierResponse>> findAll(
             @RequestParam(required = false) @Size(max = 100) String search,
             @RequestParam(required = false) Boolean active,
-            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return ResponseEntity.ok(supplierService.findAll(search, active, pageable));
     }
@@ -86,7 +90,7 @@ public class SupplierController {
     public ResponseEntity<PageResponse<ProductResponse>> findProducts(
             @PathVariable @Positive Long supplierId,
             @RequestParam(required = false) @Size(max = 100) String search,
-            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
     ) {
         return ResponseEntity.ok(supplierService.findProducts(supplierId, search, pageable));
     }
@@ -113,7 +117,7 @@ public class SupplierController {
             @RequestParam(required = false) java.time.LocalDate from,
             @RequestParam(required = false) java.time.LocalDate to,
             @RequestParam(required = false) Long productId,
-            @PageableDefault(size = 10, sort = "entryDate", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "entryDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(entryService.findAll(supplierId, from, to, productId, pageable));
     }

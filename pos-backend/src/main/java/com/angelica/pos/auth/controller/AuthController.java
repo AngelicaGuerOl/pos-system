@@ -6,6 +6,8 @@ import com.angelica.pos.auth.dto.LoginRequest;
 import com.angelica.pos.auth.dto.LoginResponse;
 import com.angelica.pos.auth.service.AuthService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = OpenApiTags.AUTH)
 public class AuthController {
 
     private final AuthService authService;

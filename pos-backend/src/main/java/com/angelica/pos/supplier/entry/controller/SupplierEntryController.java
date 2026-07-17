@@ -1,13 +1,16 @@
 package com.angelica.pos.supplier.entry.controller;
 
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
 import com.angelica.pos.supplier.entry.dto.SupplierEntryRequest;
 import com.angelica.pos.supplier.entry.dto.SupplierEntryResponse;
 import com.angelica.pos.supplier.entry.service.SupplierEntryService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -30,6 +33,7 @@ import java.time.LocalDate;
 @RequestMapping("/api/supplier-entries")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.SUPPLIER_ENTRIES)
 public class SupplierEntryController {
 
     private final SupplierEntryService entryService;
@@ -53,7 +57,7 @@ public class SupplierEntryController {
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             @RequestParam(required = false) Long productId,
-            @PageableDefault(size = 10, sort = "entryDate", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "entryDate", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(entryService.findAll(supplierId, from, to, productId, pageable));
     }

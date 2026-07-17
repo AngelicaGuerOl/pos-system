@@ -6,11 +6,14 @@ import com.angelica.pos.inventory.movement.entity.InventoryMovementDirection;
 import com.angelica.pos.inventory.movement.entity.InventoryMovementType;
 import com.angelica.pos.inventory.movement.service.InventoryMovementService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -34,6 +37,7 @@ import java.time.OffsetDateTime;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.INVENTORY_MOVEMENTS)
 public class InventoryMovementController {
 
     private final InventoryMovementService inventoryMovementService;
@@ -85,7 +89,7 @@ public class InventoryMovementController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             OffsetDateTime to,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(inventoryMovementService.findAll(
                 search,
@@ -103,7 +107,7 @@ public class InventoryMovementController {
             @PathVariable
             @Positive(message = "Product id must be positive")
             Long productId,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(inventoryMovementService.findByProduct(productId, pageable));
     }

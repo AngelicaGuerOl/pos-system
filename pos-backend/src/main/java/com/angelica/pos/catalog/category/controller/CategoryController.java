@@ -4,6 +4,8 @@ import com.angelica.pos.catalog.category.dto.CategoryRequest;
 import com.angelica.pos.catalog.category.dto.CategoryResponse;
 import com.angelica.pos.catalog.category.dto.CategoryUpdateRequest;
 import com.angelica.pos.catalog.category.service.CategoryService;
+import com.angelica.pos.shared.config.OpenApiTags;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
+@Tag(name = OpenApiTags.CATEGORIES)
 public class CategoryController {
 
     private final CategoryService categoryService;

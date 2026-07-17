@@ -4,10 +4,13 @@ import com.angelica.pos.receivable.payment.dto.ReceivablePaymentRequest;
 import com.angelica.pos.receivable.payment.dto.ReceivablePaymentResponse;
 import com.angelica.pos.receivable.payment.service.ReceivablePaymentService;
 import com.angelica.pos.security.AuthenticatedUser;
+import com.angelica.pos.shared.config.OpenApiTags;
 import com.angelica.pos.shared.response.PageResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -26,6 +29,7 @@ import java.net.URI;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Tag(name = OpenApiTags.RECEIVABLE_PAYMENTS)
 public class ReceivablePaymentController {
 
     private final ReceivablePaymentService receivablePaymentService;
@@ -56,7 +60,7 @@ public class ReceivablePaymentController {
             @PathVariable
             @Positive(message = "Receivable id must be positive")
             Long receivableId,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(receivablePaymentService.findByReceivable(receivableId, pageable));
     }
