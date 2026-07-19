@@ -2,7 +2,7 @@
 
 NovaPOS is a local-first full-stack application for small retail store operations. The system is composed of a React frontend, a Spring Boot REST API, and a PostgreSQL database. The frontend communicates with the backend through HTTP/JSON, and the backend owns the business calculations, transactional workflows, security checks, and persistence rules.
 
-Docker Compose is used to run the local development stack. The project also supports running PostgreSQL in Docker while starting the backend from Maven or IntelliJ IDEA and the frontend from Vite.
+Docker Compose is used to run the local development stack. The project also supports running PostgreSQL in Docker while starting the backend from Maven or IntelliJ IDEA and the frontend from Vite. For local store production on Windows, NovaPOS uses PostgreSQL, the Spring Boot backend, and an Nginx-served React build in Docker.
 
 ## System Overview
 
@@ -14,7 +14,7 @@ flowchart LR
     Backend --> Swagger[Swagger UI / OpenAPI]
 ```
 
-The backend exposes REST endpoints under `/api`. Swagger UI and OpenAPI endpoints are available only when Springdoc is enabled through the `dev` profile. The frontend uses `VITE_API_BASE_URL` to target the API base URL.
+The backend exposes REST endpoints under `/api`. Swagger UI and OpenAPI endpoints are available only when Springdoc is enabled through the `dev` profile. During development, the frontend uses Vite and `VITE_API_BASE_URL` or the Vite `/api` proxy to target the API. In local store production, Nginx serves the compiled React files and proxies `/api` to the internal `backend:8080` service.
 
 ## Backend Architecture
 
@@ -83,7 +83,7 @@ The same design is used for other write workflows: the frontend sends the user's
 
 ## Deployment Architecture
 
-The verified Docker Compose services are:
+The verified Docker Compose development services are:
 
 | Service | Purpose |
 | --- | --- |
@@ -93,6 +93,16 @@ The verified Docker Compose services are:
 | `pgadmin` | Optional database administration UI. |
 
 The current frontend Dockerfile runs `npm run dev`. It is a development container, not a production-optimized Nginx image.
+
+The local store production stack uses `docker-compose.yml` plus `docker-compose.prod.yml` and starts only:
+
+| Service | Purpose |
+| --- | --- |
+| `db` | PostgreSQL 16 with the `pos_postgres_prod_data` production volume and no host port. |
+| `backend` | Spring Boot API on the Docker network only, running the `prod` profile. |
+| `frontend` | Nginx serving the Vite `dist` build and publishing only `127.0.0.1:${NOVAPOS_FRONTEND_PORT:-80}:80`. |
+
+In production, Nginx keeps React Router working with `try_files $uri $uri/ /index.html` and forwards `/api` without removing the prefix, matching the backend controllers.
 
 ## Architectural Decisions
 

@@ -1,6 +1,6 @@
 # Installation
 
-This guide describes the verified ways to run NovaPOS locally. It does not include production deployment steps.
+This guide describes the verified ways to run NovaPOS locally for development. For the Windows local store production installation, use [Local Store Deployment](store-deployment.md).
 
 ## Prerequisites
 
@@ -118,6 +118,8 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml down
 ```
 
 The current frontend container runs the Vite development server. It is not a production-optimized static container.
+
+For daily store use on Windows, do not use the development stack. Use the production guide: [Local Store Deployment](store-deployment.md).
 
 The `docker-compose.dev.yml` file adds frontend volume mounts and polling-related environment variables for a better local development loop. It does not replace the base services defined in `docker-compose.yml`.
 

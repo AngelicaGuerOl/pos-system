@@ -216,6 +216,8 @@ npm run build
 - [Database](docs/database.md)
 - [Security](docs/security.md)
 - [Installation Guide](docs/installation.md)
+- [Local Store Deployment](docs/store-deployment.md)
+- [Production Changes Explained](docs/produccion.md)
 - [Testing](docs/testing.md)
 - [Backup and Restore](docs/backup-restore.md)
 - [Legacy Data Import](docs/legacy-import.md)
@@ -252,7 +254,6 @@ NovaPOS is a migration and redesign of the original [Java Swing Point of Sale Sy
 - Automated database backups.
 - Frontend automated tests.
 - GitHub Actions for build and verification.
-- Production-optimized frontend container.
 
 ## Author
 

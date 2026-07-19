@@ -1,5 +1,9 @@
 .env
 *.local
+backups/
+NovaPOS-Backups/
+*.dump
+*.backup
 
 node_modules/
 dist/

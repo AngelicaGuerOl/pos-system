@@ -2,7 +2,16 @@
 
 Backups are essential because NovaPOS stores operational data for sales, stock, cash sessions, customer credit accounts, payments, supplier entries, and supplier settlements.
 
-This document provides command patterns for the current Docker database service. It does not create automated backup scripts.
+This document provides command patterns for the current Docker development database service.
+
+For the Windows local store production installation, use the scripts instead:
+
+```powershell
+.\scripts\backup.ps1
+.\scripts\restore.ps1 -BackupFile "C:\NovaPOS-Backups\novapos-fecha.dump"
+```
+
+Those scripts use `.env`, `docker-compose.yml`, and `docker-compose.prod.yml`, create PostgreSQL custom-format backups with `pg_dump -Fc`, and avoid PowerShell pipelines for binary dump transport.
 
 The commands assume the Docker Compose service name is `db`, which is the PostgreSQL service defined by the project. They use the database user and database name already available inside the container.
 
@@ -106,7 +115,7 @@ Recommended local operating policy:
 - Store at least one copy outside the store computer.
 - Test restoration periodically on a non-production copy.
 
-This is a recommendation. Automated backups are not currently implemented in the repository.
+This is a recommendation. The local store production scripts include a Windows Task Scheduler helper in `scripts/register-backup-task.ps1`.
 
 For a small local installation, the most important habit is consistency: create backups before risky operations and verify periodically that at least one recent backup can actually be restored.
 

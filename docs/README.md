@@ -25,6 +25,12 @@ For endpoint-level request and response details, run the backend with the `dev` 
 - [Installation](installation.md)  
   Provides the verified setup paths for local development and the Docker-based development stack.
 
+- [Local Store Deployment](store-deployment.md)
+  Explains the Windows Docker Desktop installation for daily store use with production containers, Nginx, scripts, shortcuts, and backups.
+
+- [Production Changes Explained](produccion.md)
+  Documents the production files, scripts, Compose override, Nginx behavior, commands executed, and verification rationale.
+
 - [Testing](testing.md)  
   Describes the current backend test coverage, frontend quality checks, verification commands, and manual regression flows.
 

@@ -113,6 +113,12 @@ Implemented:
 - Environment-based secrets.
 - Development-only Swagger through profile configuration.
 
+## Local Store Production
+
+The Windows local store production setup runs the backend with the `prod` profile. In that profile, Swagger/OpenAPI is disabled by Spring configuration.
+
+Only the frontend container publishes a host port, bound by default to `127.0.0.1:${NOVAPOS_FRONTEND_PORT:-80}`. The backend and PostgreSQL services remain inside the Docker network and do not publish host ports. This keeps NovaPOS available from the same computer at `http://localhost` without automatically exposing it to other computers on the local network or to the Internet.
+
 Security-sensitive operational decisions are handled server-side. Examples include stock validation, cash session lookup, receivable payment limits, sale access checks, supplier administration, and report visibility.
 
 Not implemented in the current codebase:
