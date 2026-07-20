@@ -11,10 +11,11 @@ public interface ProductService {
 
     ProductResponse create(ProductRequest request, AuthenticatedUser authenticatedUser);
 
-    PageResponse<ProductResponse> findAllActive(
+    PageResponse<ProductResponse> findAll(
             String search,
             Long categoryId,
             Long supplierId,
+            Boolean active,
             Boolean lowStock,
             Pageable pageable
     );
@@ -26,4 +27,6 @@ public interface ProductService {
     ProductResponse update(Long id, ProductUpdateRequest request);
 
     void deactivate(Long id);
+
+    void reactivate(Long id);
 }

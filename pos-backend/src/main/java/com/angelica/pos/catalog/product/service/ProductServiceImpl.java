@@ -70,10 +70,11 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ProductResponse> findAllActive(
+    public PageResponse<ProductResponse> findAll(
             String search,
             Long categoryId,
             Long supplierId,
+            Boolean active,
             Boolean lowStock,
             Pageable pageable
     ) {
@@ -81,11 +82,12 @@ public class ProductServiceImpl implements ProductService {
 
         String normalizedSearch = normalizeSearch(search);
         Page<Product> productsPage = normalizedSearch == null
-                ? productRepository.findAllActiveWithFilters(categoryId, supplierId, lowStock, pageable)
-                : productRepository.findAllActiveWithSearchAndFilters(
+                ? productRepository.findAllWithFilters(categoryId, supplierId, active, lowStock, pageable)
+                : productRepository.findAllWithSearchAndFilters(
                         normalizedSearch,
                         categoryId,
                         supplierId,
+                        active,
                         lowStock,
                         pageable
                 );
@@ -106,7 +108,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public ProductResponse findById(Long id) {
-        Product product = findActiveProductById(id);
+        Product product = findProductById(id);
         return productMapper.toResponse(product);
     }
 
@@ -123,7 +125,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse update(Long id, ProductUpdateRequest request) {
-        Product product = findActiveProductById(id);
+        Product product = findProductById(id);
         Category category = findActiveCategoryById(request.getCategoryId());
         Supplier supplier = findOptionalActiveSupplier(request.getSupplierId());
         String normalizedBarcode = normalizeBarcode(request.getBarcode());
@@ -149,6 +151,18 @@ public class ProductServiceImpl implements ProductService {
     public void deactivate(Long id) {
         Product product = findActiveProductById(id);
         product.setActive(false);
+    }
+
+    @Override
+    @Transactional
+    public void reactivate(Long id) {
+        Product product = findProductById(id);
+        product.setActive(true);
+    }
+
+    private Product findProductById(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
     }
 
     private Product findActiveProductById(Long id) {

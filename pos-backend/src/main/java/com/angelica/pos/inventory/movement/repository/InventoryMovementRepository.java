@@ -16,6 +16,8 @@ public interface InventoryMovementRepository extends
         JpaRepository<InventoryMovement, Long>,
         JpaSpecificationExecutor<InventoryMovement> {
 
+    boolean existsByProductId(Long productId);
+
     @Query("""
             SELECT im
             FROM InventoryMovement im

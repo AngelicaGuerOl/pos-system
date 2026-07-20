@@ -4,6 +4,7 @@ import com.angelica.pos.catalog.category.exception.CategoryAlreadyExistsExceptio
 import com.angelica.pos.catalog.category.exception.CategoryNotFoundException;
 import com.angelica.pos.catalog.product.exception.ProductAlreadyExistsException;
 import com.angelica.pos.catalog.product.exception.ProductNotFoundException;
+import com.angelica.pos.catalog.product.external.ExternalProductCatalogUnavailableException;
 import com.angelica.pos.cash.movement.exception.OpenCashSessionRequiredException;
 import com.angelica.pos.cash.session.exception.CashSessionAlreadyOpenException;
 import com.angelica.pos.cash.session.exception.CashSessionAlreadyClosedException;
@@ -105,6 +106,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return buildErrorResponse(HttpStatus.CONFLICT, exception.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(ExternalProductCatalogUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleExternalProductCatalogUnavailable(
+            ExternalProductCatalogUnavailableException exception,
+            HttpServletRequest request
+    ) {
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage(), request, null);
     }
 
     @ExceptionHandler(SupplierNotFoundException.class)

@@ -13,6 +13,7 @@ import java.util.List;
 public class SupplierEntryResponse {
 
     private Long id;
+    private SupplierEntryType entryType;
     private Long supplierId;
     private String supplierName;
     private LocalDate entryDate;

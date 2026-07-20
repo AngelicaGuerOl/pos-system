@@ -1,6 +1,7 @@
 package com.angelica.pos.supplier.entry.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -13,8 +14,11 @@ import java.math.BigDecimal;
 public class SupplierEntryItemRequest {
 
     @Schema(description = "ID del producto asociado al proveedor", example = "10")
-    @NotNull(message = "El producto es obligatorio")
     private Long productId;
+
+    @Schema(description = "Datos del producto nuevo temporal. Usar solo cuando productId sea null.")
+    @Valid
+    private NewSupplierEntryProductRequest newProduct;
 
     @Schema(description = "Cantidad recibida", example = "2")
     @NotNull(message = "La cantidad es obligatoria")

@@ -30,6 +30,9 @@ security:
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
 
 app:
+  open-food-facts:
+    base-url: ${OPEN_FOOD_FACTS_BASE_URL:https://world.openfoodfacts.org}
+    user-agent: ${OPEN_FOOD_FACTS_USER_AGENT:NovaPOS/1.0 (contacto@example.com)}
   bootstrap:
     admin:
       enabled: ${BOOTSTRAP_ADMIN_ENABLED:true}

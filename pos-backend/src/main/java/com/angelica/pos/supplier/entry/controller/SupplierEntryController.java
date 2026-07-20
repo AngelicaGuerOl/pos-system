@@ -44,6 +44,9 @@ public class SupplierEntryController {
             @AuthenticationPrincipal AuthenticatedUser authenticatedUser
     ) {
         SupplierEntryResponse response = entryService.create(request, authenticatedUser);
+        if (response.getId() == null) {
+            return ResponseEntity.ok(response);
+        }
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(response.getId())

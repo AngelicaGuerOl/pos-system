@@ -16,8 +16,11 @@ import java.util.List;
 public class SupplierEntryRequest {
 
     @Schema(description = "ID del proveedor activo", example = "1")
-    @NotNull(message = "El proveedor es obligatorio")
     private Long supplierId;
+
+    @Schema(description = "Tipo de entrada", example = "SUPPLIER_PURCHASE")
+    @NotNull(message = "El tipo de entrada es obligatorio")
+    private SupplierEntryType entryType;
 
     @Schema(description = "Fecha de recepción. Formato ISO yyyy-MM-dd.", example = "2026-07-02")
     @NotNull(message = "La fecha de entrada es obligatoria")

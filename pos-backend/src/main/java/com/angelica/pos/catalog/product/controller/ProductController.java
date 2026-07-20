@@ -1,8 +1,10 @@
 package com.angelica.pos.catalog.product.controller;
 
+import com.angelica.pos.catalog.product.dto.BarcodeLookupResponse;
 import com.angelica.pos.catalog.product.dto.ProductRequest;
 import com.angelica.pos.catalog.product.dto.ProductResponse;
 import com.angelica.pos.catalog.product.dto.ProductUpdateRequest;
+import com.angelica.pos.catalog.product.service.BarcodeLookupService;
 import com.angelica.pos.catalog.product.service.ProductService;
 import com.angelica.pos.security.AuthenticatedUser;
 import com.angelica.pos.shared.config.OpenApiTags;
@@ -40,6 +42,7 @@ import java.net.URI;
 public class ProductController {
 
     private final ProductService productService;
+    private final BarcodeLookupService barcodeLookupService;
 
     @PostMapping
     public ResponseEntity<ProductResponse> create(
@@ -66,10 +69,11 @@ public class ProductController {
             @RequestParam(required = false)
             @Positive(message = "Supplier id must be positive")
             Long supplierId,
+            @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Boolean lowStock,
             @ParameterObject @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return ResponseEntity.ok(productService.findAllActive(search, categoryId, supplierId, lowStock, pageable));
+        return ResponseEntity.ok(productService.findAll(search, categoryId, supplierId, active, lowStock, pageable));
     }
 
     @GetMapping("/{id}")
@@ -90,6 +94,15 @@ public class ProductController {
         return ResponseEntity.ok(productService.findByBarcode(barcode));
     }
 
+    @GetMapping("/barcode-lookup/{barcode}")
+    public ResponseEntity<BarcodeLookupResponse> lookupBarcode(
+            @PathVariable
+            @Size(max = 50, message = "Barcode must have at most 50 characters")
+            String barcode
+    ) {
+        return ResponseEntity.ok(barcodeLookupService.lookup(barcode));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> update(
             @PathVariable
@@ -107,6 +120,16 @@ public class ProductController {
             Long id
     ) {
         productService.deactivate(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/reactivate")
+    public ResponseEntity<Void> reactivate(
+            @PathVariable
+            @Positive(message = "Product id must be positive")
+            Long id
+    ) {
+        productService.reactivate(id);
         return ResponseEntity.noContent().build();
     }
 }
