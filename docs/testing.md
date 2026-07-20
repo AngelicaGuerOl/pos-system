@@ -1,147 +1,150 @@
-# Testing
+# Testing And Verification
 
-NovaPOS currently has automated backend tests and frontend quality checks. There is no frontend test runner, end-to-end suite, CI workflow, or coverage reporting configured in the repository.
+NovaPOS has automated backend tests and frontend verification through lint/build commands. The current version does not include a frontend test runner, end-to-end suite, CI workflow, or coverage report.
 
-## Testing Overview
+## Current Strategy
 
-Verified test types:
-
-- Backend service tests.
-- Backend controller tests.
-- Backend DTO validation tests.
-- Spring context loading test.
-
-The frontend is verified through linting and production build checks.
-
-The test suite focuses on high-risk backend behavior: transactional workflows, validation, financial calculations, stock movement side effects, and access-sensitive operations. It is not intended to be exhaustive coverage of every controller or UI state.
-
-Most backend tests are organized close to the feature they verify. Service tests exercise business rules directly with mocked collaborators, while controller tests verify HTTP behavior, validation, security integration, and response contracts where present.
+| Area | Status |
+| --- | --- |
+| Backend unit/service tests | Implemented in several modules. |
+| Backend controller tests | Implemented in main modules. |
+| DTO validation | Implemented for sensitive requests. |
+| Spring context | Implemented. |
+| Frontend lint | Implemented with Oxlint. |
+| Frontend typecheck/build | Implemented through `npm run build`. |
+| Frontend unit/component tests | Not configured. |
+| End-to-end tests | Not configured. |
+| CI | Not configured. |
+| Coverage | Not configured. |
 
 ## Backend Tests
 
-Existing backend tests cover important flows in:
+Existing tests confirmed under `pos-backend/src/test/java`:
 
-| Area | Test coverage present |
+| Module | Existing coverage |
 | --- | --- |
-| Application context | Spring context loading. |
-| Products | Product service behavior. |
-| Inventory movements | Controller, service, and request validation. |
-| Cash movements | Controller, service, and request validation. |
-| Cash sessions | Cash session service behavior. |
+| Application | Spring context loading. |
+| Products | Product service. |
+| Inventory | Controller, service, and manual movement validation. |
+| Cash | Movement controller/service and cash session service. |
 | Sales | Controller, service, and request validation. |
-| Sale cancellations | Cancellation service behavior. |
-| Accounts receivable | Controller and service behavior. |
-| Receivable payments | Controller and service behavior. |
-| Dashboard | Dashboard service summaries. |
-| Reports | Operations report service behavior. |
-| Suppliers | Supplier service behavior. |
-| Supplier settlement export | Excel export service behavior. |
+| Cancellations | Cancellation service. |
+| Accounts receivable | Controller and service. |
+| Payments | Controller and service. |
+| Dashboard | Summary service. |
+| Reports | Operations report service. |
+| Suppliers | Supplier service. |
+| Supplier settlements | Excel export. |
 
-Run backend verification:
+Command:
 
 ```bash
 cd pos-backend
 ./mvnw clean verify
 ```
 
-Windows PowerShell:
+PowerShell:
 
 ```powershell
 cd pos-backend
 .\mvnw.cmd clean verify
 ```
 
-When a backend change touches MapStruct mappings, Flyway validation, Spring Security rules, or service transactions, run the full Maven verification instead of a single test class. This catches generated mapper errors and application context failures.
+Run the full verification when changes affect MapStruct, security, transactional rules, migrations, DTOs, or controllers.
 
-## Frontend Quality Checks
+## Frontend Verification
 
-The frontend scripts are defined in `pos-frontend/package.json`.
+Real scripts defined in `pos-frontend/package.json`:
 
 ```bash
 cd pos-frontend
-npm ci
 npm run lint
 npm run build
 ```
 
-`npm run lint` runs Oxlint. `npm run build` runs TypeScript project build and Vite production build.
+`npm run lint` runs Oxlint. `npm run build` runs `tsc -b` and `vite build`, so it works as both typecheck and production build.
 
-Use `npm ci` instead of `npm install` for reproducible local checks because the repository includes `package-lock.json`.
+There is no `npm test` script in the current version.
 
-Frontend verification should be run after changes to routes, shared components, feature dependencies, API mappers, form schemas, or TypeScript domain models. The build step is especially important because it catches type errors that linting may not report.
+## Docker
 
-## Manual Regression Flows
+`docker-compose.prod.yml` is an override and is not valid by itself. This command fails because the base service definitions are missing:
 
-These flows are useful after changes that touch sales, cash, inventory, receivables, suppliers, or authentication.
+```bash
+docker compose -f docker-compose.prod.yml config
+```
 
-Manual checks should use realistic but non-sensitive sample data. Avoid using real customer names, real supplier files, or private sales values when preparing portfolio demos or screenshots.
+The correct static validation for local production deployment uses both files:
 
-### Cash Sale Flow
+```bash
+docker compose --env-file .env \
+  -f docker-compose.yml \
+  -f docker-compose.prod.yml \
+  config
+```
+
+Do not use `docker compose down -v` as part of normal verification.
+
+## Recommended Manual Flows
+
+### Cash Sale
 
 ```text
 Open cash session
 -> Register cash sale
--> Verify inventory movement and stock
+-> Verify stock
 -> Verify cash movement
--> Close session
+-> Close cash session
 ```
 
-### Credit Flow
+### Credit Sale
 
 ```text
-Register credit sale
--> Verify account receivable
--> Register customer payment
+Register customer
+-> Register credit sale
+-> Verify receivable
+-> Register payment
 -> Verify balance and cash movement
 ```
 
-### Return or Cancellation Flow
+### Return Or Cancellation
 
 ```text
 Register sale
--> Return items or cancel sale
--> Verify stock restoration
--> Verify cash or receivable adjustment
+-> Return products or cancel
+-> Verify inventory
+-> Verify cash or receivable
 ```
 
-### Supplier Flow
+### Suppliers
 
 ```text
-Register merchandise entry
--> Start supplier settlement
--> Capture final inventory
--> Finalize settlement
+Register supplier
+-> Assign products
+-> Create opening inventory
+-> Register merchandise
+-> Create and finalize settlement
 -> Export Excel
 ```
 
-### Historical Import Review
+### Security
 
 ```text
-Run preview
--> Review generated warnings
--> Execute only if there are no blocking errors
--> Verify suppliers, entries, settlements, and current stock
+Login ADMIN
+-> Review administrative modules
+-> Login CASHIER
+-> Confirm UI restrictions
+-> Confirm backend rejects non-permitted routes
 ```
 
-### Security Flow
+## Results From This Documentation Review
 
-```text
-Login as ADMIN
--> Verify administrative modules
--> Login as CASHIER
--> Verify restricted modules are not accessible
-```
+Real command results from a documentation review should be reported in the final delivery. They are not documented here as a permanent guarantee because results can change with new modifications.
 
-## Testing Limitations
+## Limitations
 
-Current limitations:
-
-- No frontend automated tests are configured.
-- No browser end-to-end tests are configured.
-- No GitHub Actions workflow exists in the repository.
-- No coverage report command is configured.
-- Dockerized integration test orchestration is not documented as an automated workflow.
-
-These limitations do not prevent local verification, but they are candidates for future improvements.
-
-For larger future changes, the most valuable additions would be frontend component tests, end-to-end tests for sales and cash workflows, and a CI workflow that runs Maven verification plus frontend lint/build on every pull request.
+- No measured coverage percentage.
+- No automated UI tests.
+- No E2E tests.
+- No CI pipeline in the repository.
+- PowerShell scripts require Windows verification before claiming real execution.

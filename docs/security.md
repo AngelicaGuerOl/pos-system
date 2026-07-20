@@ -1,124 +1,110 @@
 # Security
 
-NovaPOS uses Spring Security with stateless JWT authentication. The backend is the source of truth for access control; frontend route guards improve navigation but do not replace backend authorization.
+NovaPOS uses Spring Security with stateless JWT authentication. The backend is the source of truth for permissions; frontend guards only control navigation.
 
 ## Authentication
 
-Users authenticate through `POST /api/auth/login`. The backend validates credentials with Spring Security and returns a JWT. The token includes the subject, user id, role, issued-at time, and expiration.
+Users log in with:
 
-JWT behavior is configured through:
+```text
+POST /api/auth/login
+```
+
+The backend validates credentials with Spring Security and returns a JWT. The token includes username, id, role, issued-at time, and expiration.
+
+Relevant configuration:
 
 - `JWT_SECRET`
 - `JWT_EXPIRATION_MINUTES`
 - `security.jwt.*` properties
 
-The secret must be Base64 or Base64URL encoded and decode to at least 32 bytes. Passwords are hashed with BCrypt through the configured `PasswordEncoder`.
+`JWT_SECRET` must be Base64/Base64URL and decode to at least 32 bytes. Passwords are stored with BCrypt.
 
-Only active users can be loaded by `CustomUserDetailsService`. Inactive users are not accepted by the authentication layer.
+Only active users can authenticate. `MustChangePasswordFilter` blocks business endpoints when a user has `mustChangePassword=true`; in that state the user can only fetch the current user and change their password.
 
-The `MustChangePasswordFilter` blocks authenticated users marked with `mustChangePassword` from accessing business endpoints until they change their password. Allowed paths during that state are login, current-user lookup, and password change.
+## Roles
+
+Implemented roles:
+
+| Role | Scope |
+| --- | --- |
+| `ADMIN` | User management, catalogs, inventory, suppliers, reports, accounts receivable, and administrative history. |
+| `CASHIER` | Cash operation, sales, customers, and backend-permitted queries/actions. |
 
 ## Authorization
 
-The system has two roles:
+`SecurityConfig` defines rules by method and route:
 
-| Area | ADMIN | CASHIER |
-| --- | --- | --- |
-| Dashboard | Global summary | Own cash/session summary |
-| Users | Manage and list | No management access |
-| Categories | Create/update/deactivate and read | Read |
-| Products | Create/update/deactivate and read | Read |
-| Customers | Create/update/read/deactivate | Create/update/read |
-| Inventory movements | Manage and view | No administrative inventory access |
-| Cash sessions | Open/close own, view history | Open/close own |
-| Cash movements | Own current cash movements | Own current cash movements |
-| Sales | Create, cancel, return, view history | Create, cancel/return permitted sales, view permitted history |
-| Receivables and payments | Administrative receivable list plus payments | Permitted customer and payment operations |
-| Reports | Administrative reports | No report access |
-| Suppliers, entries, settlements | Full supplier control | No supplier control |
+- Public login.
+- Dashboard for `ADMIN` and `CASHIER`.
+- Users and reports for `ADMIN`.
+- Suppliers, supplier entries, and supplier settlements for `ADMIN`.
+- Category/product writes for `ADMIN`; reads for `ADMIN` and `CASHIER`.
+- Customers for both roles, except deactivation restricted to `ADMIN`.
+- Cash, sales, returns, cancellations, and payments for both roles with additional service rules.
+- Administrative cash history and global receivables for `ADMIN`.
 
-`SecurityConfig` defines the HTTP authorization rules. Some service methods add additional access checks, such as restricting non-admin sale detail, return, or cancellation access to sales created by the authenticated user.
+Some services add contextual validation, such as cashier access to permitted sales.
 
-Frontend route guards mirror the role model for navigation, but they are not considered security boundaries. A user who bypasses the frontend still has to pass backend JWT validation and Spring Security authorization.
+## Public And Protected Endpoints
 
-## Public and Protected Endpoints
-
-Public access is limited to:
+Public:
 
 - `POST /api/auth/login`
-- CORS preflight `OPTIONS` requests
-- Swagger/OpenAPI paths when Springdoc is enabled by profile
+- preflight `OPTIONS`
+- Swagger/OpenAPI only when Springdoc is enabled by the `dev` profile
 
-Most business endpoints require a valid Bearer token. Swagger paths are permitted by security configuration, but Springdoc itself is disabled outside the configured development profile.
+All other business endpoints require a valid Bearer token.
 
 ## Error Handling
 
-Security and application errors are returned as JSON using the shared `ErrorResponse` shape:
+Errors are returned as JSON with `ErrorResponse`:
 
-- `400 Bad Request` for invalid input and validation failures.
-- `401 Unauthorized` for missing, invalid, or expired authentication.
-- `403 Forbidden` for role or password-change restrictions.
-- `404 Not Found` for missing resources.
-- `409 Conflict` for business conflicts.
-- `500 Internal Server Error` for unhandled failures.
+- `400 Bad Request`: invalid input.
+- `401 Unauthorized`: missing or invalid authentication.
+- `403 Forbidden`: insufficient role or pending password change.
+- `404 Not Found`: missing resource.
+- `409 Conflict`: business conflict.
+- `500 Internal Server Error`: unhandled error.
 
-Bean Validation and constraint errors include field-level validation information when available through `validationErrors`.
+## CORS And Profiles
 
-## Secrets and Configuration
-
-Runtime configuration is loaded from `.env` and environment variables. `.env.example` documents the required values. Real secrets must not be committed.
-
-Important values include:
-
-- `JWT_SECRET`
-- `JWT_EXPIRATION_MINUTES`
-- `DB_NAME`
-- `DB_USER`
-- `DB_PASSWORD`
-- `BOOTSTRAP_ADMIN_USERNAME`
-- `BOOTSTRAP_ADMIN_PASSWORD`
-- `SPRING_PROFILES_ACTIVE`
-
-Bootstrap admin credentials are intended for initialization and must be changed before real use.
-
-## CORS and Profiles
-
-CORS defaults to the local Vite frontend origins:
+Default CORS allows:
 
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
 
-The active origins can be configured through `app.cors.allowed-origins`.
-
-Swagger/OpenAPI availability:
+It is configured with `app.cors.allowed-origins`.
 
 | Profile | Swagger/OpenAPI |
 | --- | --- |
 | `dev` | Enabled |
 | `test` | Disabled |
 | `prod` | Disabled |
-| default base configuration | Disabled unless overridden |
 
-The root application configuration defaults the active profile to `dev`, while `.env.example` sets `SPRING_PROFILES_ACTIVE=prod` for the Docker stack template.
+## Local Production Deployment
 
-## Current Security Scope
+In `docker-compose.prod.yml`, only Nginx publishes a host port. Backend and PostgreSQL do not publish ports. By default the application is available at:
 
-Implemented:
+```text
+127.0.0.1:${NOVAPOS_FRONTEND_PORT:-80}
+```
+
+## Implemented
 
 - BCrypt password hashing.
-- JWT authentication.
-- Backend role authorization.
+- Bearer JWT.
+- `ADMIN` and `CASHIER` roles.
 - Active-user validation.
 - Forced password-change filter.
-- Environment-based secrets.
-- Development-only Swagger through profile configuration.
+- Swagger disabled in `prod`.
+- Backend as the permission authority.
 
-Security-sensitive operational decisions are handled server-side. Examples include stock validation, cash session lookup, receivable payment limits, sale access checks, supplier administration, and report visibility.
-
-Not implemented in the current codebase:
+## Not Implemented
 
 - Refresh-token rotation.
-- Multi-factor authentication.
+- MFA.
 - Rate limiting.
 - Encryption at rest.
 - Advanced audit monitoring.
+- Centralized secret management.

@@ -1,106 +1,163 @@
 # Database
 
-NovaPOS uses PostgreSQL with Spring Data JPA, Hibernate, and Flyway. The schema is versioned through SQL migrations under `pos-backend/src/main/resources/db/migration`, and Hibernate is configured with `spring.jpa.hibernate.ddl-auto=validate`, so the application validates the schema instead of creating or updating it automatically.
+NovaPOS uses PostgreSQL with Spring Data JPA, Hibernate, and Flyway. The schema is versioned through SQL migrations in `pos-backend/src/main/resources/db/migration`.
 
-## Database Overview
+## Configuration
 
-- Database engine: PostgreSQL 16 in Docker Compose.
-- Persistence: Spring Data JPA and Hibernate.
-- Schema migrations: Flyway SQL scripts.
-- Monetary values use `NUMERIC` columns with explicit precision and scale.
-- Quantities use decimal columns to support fractional inventory units.
-- Timestamps use timestamp columns mapped to Java date/time types.
-- Most operational tables use foreign keys, status checks, numeric checks, and indexes for common lookups.
+- Engine: PostgreSQL 16 in Docker Compose.
+- Migrations: Flyway.
+- ORM validation: `spring.jpa.hibernate.ddl-auto=validate`.
+- Persistence: Spring Data JPA / Hibernate.
+- Local production deployment: Docker volume `pos_postgres_prod_data`.
+- Development: Docker volume `pos_postgres_data`.
+
+`ddl-auto=validate` lets Hibernate verify that entities match the schema. It does not create or modify tables automatically.
+
+## Flyway Migrations
+
+Confirmed migrations through `V19`:
+
+| Migration | Purpose |
+| --- | --- |
+| `V1` | Core schema: users, categories, products, and customers. |
+| `V2` | Forced password change. |
+| `V3` | Cash sessions. |
+| `V4` | Cash movements. |
+| `V5` | Inventory movements. |
+| `V6` | Sales and sale items. |
+| `V7` | Accounts receivable. |
+| `V8` | Receivable payments. |
+| `V9` | Returns. |
+| `V10` | Sale cancellations. |
+| `V11` | Cash closing snapshot. |
+| `V12` | Suppliers, entries, opening inventory, and settlements. |
+| `V13` | Historical import metadata. |
+| `V14`-`V18` | Historical import adjustments, tolerances, and cost review. |
+| `V19` | Allows negative expected cash for historical cash-session cases. |
+
+Rules:
+
+- Do not modify old migrations that may already have been applied.
+- Create a new versioned migration for every schema change.
+- Keep SQL constraints, JPA entities, and DTO/service validations aligned.
+- Test backend startup after changes because Flyway and `ddl-auto=validate` detect inconsistencies.
 
 ## Main Tables
 
-| Domain | Main tables | Purpose |
-| --- | --- | --- |
-| Users | `users` | Authentication identity, role, active status, password state. |
-| Catalog | `categories`, `products` | Product catalog, pricing, stock, category, supplier relationship. |
-| Customers | `customers` | Customer records used for credit sales and receivables. |
-| Cash sessions | `cash_sessions` | Cash drawer lifecycle, opening, closing, and closing snapshots. |
-| Cash movements | `cash_movements` | Cash inflows/outflows from sales, payments, refunds, and manual movements. |
-| Sales | `sales`, `sale_items` | Sale header and historical item snapshots. |
-| Returns | `sale_returns`, `sale_return_items` | Product return records and financial impact. |
-| Cancellations | `sale_cancellations` | Sale cancellation records and refund references. |
-| Receivables | `receivables`, `receivable_payments` | Credit accounts, balances, payments, and status. |
-| Inventory | `inventory_movements` | Stock movement audit trail. |
-| Suppliers | `suppliers` | Supplier catalog and active/inactive state. |
-| Supplier opening inventory | `supplier_inventory_baselines`, `supplier_inventory_baseline_items` | First historical inventory base per supplier. |
-| Merchandise entries | `supplier_entries`, `supplier_entry_items` | Supplier merchandise received and historical cost/sale values. |
-| Supplier settlements | `supplier_settlements`, `supplier_settlement_items` | Draft/finalized supplier settlement headers and item snapshots. |
-| Legacy import | `legacy_import_sources` | Idempotency and audit information for spreadsheet import. |
+| Domain | Tables |
+| --- | --- |
+| Users | `users` |
+| Catalog | `categories`, `products` |
+| Customers | `customers` |
+| Cash | `cash_sessions`, `cash_movements` |
+| Sales | `sales`, `sale_items`, `sale_cancellations`, `sale_returns`, `sale_return_items` |
+| Accounts receivable | `receivables`, `receivable_payments` |
+| Inventory | `inventory_movements` |
+| Suppliers | `suppliers`, `supplier_inventory_baselines`, `supplier_inventory_baseline_items`, `supplier_entries`, `supplier_entry_items`, `supplier_settlements`, `supplier_settlement_items` |
+| Historical import | `legacy_import_sources` |
 
-## Entity Relationships
+## Summary ER Diagram
 
 ```mermaid
 erDiagram
     USERS ||--o{ CASH_SESSIONS : opens
-    USERS ||--o{ SALES : registers
+    USERS ||--o{ SALES : creates
     USERS ||--o{ INVENTORY_MOVEMENTS : creates
     CATEGORIES ||--o{ PRODUCTS : groups
     SUPPLIERS ||--o{ PRODUCTS : supplies
-    CASH_SESSIONS ||--o{ CASH_MOVEMENTS : contains
+    CUSTOMERS ||--o{ SALES : buys_on_credit
     CASH_SESSIONS ||--o{ SALES : records
-    CUSTOMERS ||--o{ SALES : places
+    CASH_SESSIONS ||--o{ CASH_MOVEMENTS : contains
     SALES ||--|{ SALE_ITEMS : contains
-    PRODUCTS ||--o{ SALE_ITEMS : appears_in
-    SALES ||--o| RECEIVABLES : generates
+    PRODUCTS ||--o{ SALE_ITEMS : sold_as_snapshot
+    SALES ||--o| RECEIVABLES : creates
     RECEIVABLES ||--o{ RECEIVABLE_PAYMENTS : receives
-    SALES ||--o{ SALE_RETURNS : returns
+    SALES ||--o{ SALE_RETURNS : has
     SALE_RETURNS ||--|{ SALE_RETURN_ITEMS : contains
-    SALES ||--o| SALE_CANCELLATIONS : cancels
+    SALES ||--o| SALE_CANCELLATIONS : has
+    PRODUCTS ||--o{ INVENTORY_MOVEMENTS : moves
+    SUPPLIERS ||--o| SUPPLIER_INVENTORY_BASELINES : starts_with
+    SUPPLIER_INVENTORY_BASELINES ||--|{ SUPPLIER_INVENTORY_BASELINE_ITEMS : contains
     SUPPLIERS ||--o{ SUPPLIER_ENTRIES : receives
     SUPPLIER_ENTRIES ||--|{ SUPPLIER_ENTRY_ITEMS : contains
     SUPPLIERS ||--o{ SUPPLIER_SETTLEMENTS : settles
     SUPPLIER_SETTLEMENTS ||--|{ SUPPLIER_SETTLEMENT_ITEMS : contains
+    SUPPLIERS ||--o{ LEGACY_IMPORT_SOURCES : imported_from
 ```
 
-The diagram focuses on the operational relationships that are most useful to understand the system. It omits some user audit links to keep the model readable.
+The diagram omits some `users` audit relationships to keep it readable.
 
-## Constraints and Indexes
+## Relevant Constraints And Indexes
 
-Important verified constraints include:
+- `users.role` accepts `ADMIN` or `CASHIER`.
+- `users.username` is unique.
+- `categories.name` and `suppliers.name` are unique case-insensitively through indexes on `lower(name)`.
+- `products.barcode` is unique.
+- Products have checks for name, barcode, unit, prices, stock, and minimum stock.
+- One open cash session per user is enforced through a partial unique index.
+- Sales validate type, status, total, cash received, and change amount.
+- `receivables` controls balances, payments, returns, and status values.
+- Cash and inventory movements validate direction, type, amounts/quantities, and source.
+- Supplier baseline is unique per supplier.
+- Entry, baseline, and settlement items prevent duplicate products within the same document.
+- Only one `DRAFT` settlement can exist per supplier.
+- `legacy_import_sources` prevents duplicates by file, checksum, and sheet.
 
-- `users.role` is constrained to `ADMIN` or `CASHIER`.
-- Usernames are unique.
-- Category names are unique ignoring case.
-- Product barcodes are unique and product names/barcodes cannot be blank.
-- Products have non-negative cost, sale price, current stock, and minimum stock.
-- Cash sessions have `OPEN` and `CLOSED` status values.
-- A partial unique index enforces one open cash session per user.
-- Sales are constrained by sale type, status, total, cash received, and change amount.
-- Sale item line totals are constrained against quantity and unit price.
-- Receivable balances are constrained by original, adjusted, paid, returned, and outstanding amounts.
-- Inventory movements and cash movements store direction/type checks and source references.
-- Supplier names are unique ignoring case.
-- Supplier baselines are unique per supplier.
-- Supplier entries and settlements use supplier/date/status indexes.
-- Settlement drafts are unique per supplier while status is `DRAFT`.
-- Legacy import sources use a unique combination of file name, checksum, and sheet name for idempotency.
+## Stock And Inventory
 
-Search and report paths rely on indexes for product names, categories, suppliers, statuses, timestamps, cash sessions, customers, and source references.
+`products.current_stock` stores current stock. `inventory_movements` preserves traceability with:
 
-## Transactional Consistency
+- product;
+- user;
+- direction `IN` / `OUT`;
+- movement type;
+- quantity;
+- previous stock;
+- new stock;
+- source (`source_type`, `source_id`);
+- description;
+- timestamp.
 
-Service transactions protect multi-step operations:
+Stock is modified by transactional services: sales, returns, cancellations, manual entries/exits, supplier opening inventory, merchandise entries, and supplier settlement finalization.
 
-- Sale creation persists sale data, updates stock, and creates cash or receivable effects together.
-- Returns restore inventory and update receivable/cash refund state.
-- Cancellations restore inventory and update cash or receivable state.
-- Receivable payments update balances and create cash movement records.
-- Cash closing stores a stable closing snapshot.
-- Supplier entries update products, stock, prices, and entry records.
-- Supplier settlement finalization locks records and updates stock through inventory movements.
+## Sales And Accounts Receivable
 
-Where concurrent updates could affect stock or closing state, repositories use locking queries such as `FOR UPDATE` through JPA locking patterns.
+Sales store product snapshots in `sale_items` to preserve the name, barcode, unit, price, and cost used at the time of sale. Credit sales create a record in `receivables`; payments are stored in `receivable_payments` and also create cash movements when applicable.
 
-## Flyway Rules
+Returns can adjust cash or accounts receivable. Cancellations create their own entity instead of deleting sales.
 
-- Migrations live under `pos-backend/src/main/resources/db/migration`.
-- The project uses Flyway versioned names such as `V1__create_core_schema.sql`.
-- Applied migrations should not be edited.
-- New schema changes require new migration files.
-- Hibernate validates the schema at startup but does not create or migrate it.
-- Database constraints are part of the domain model and should remain consistent with entity validation and service rules.
+## Cash
+
+`cash_sessions` models opening, closing, counted cash, difference, and closing total snapshots. `cash_movements` records cash inflows and outflows, both manual and generated by sales, payments, returns, or cancellations.
+
+## Suppliers
+
+The supplier module separates:
+
+- supplier catalog;
+- product-supplier relationship;
+- supplier opening inventory;
+- historical merchandise entries;
+- draft/finalized supplier settlements;
+- historical price and value snapshots.
+
+Imported historical records may preserve source inconsistencies when the model allows it, rather than recalculating everything with current values.
+
+## Soft Delete
+
+Users, categories, products, customers, and suppliers use active/inactive state in the current version. They are not physically deleted in order to preserve historical relationships with sales, inventory, and operations.
+
+## Creating A New Migration
+
+1. Check the latest version in `pos-backend/src/main/resources/db/migration`.
+2. Create `V{new_version}__clear_description.sql`.
+3. Add required constraints and indexes.
+4. Align entities, DTOs, services, and tests.
+5. Run:
+
+```bash
+cd pos-backend
+./mvnw clean verify
+```
+
+6. Start the backend against a development/test database so Flyway applies the migration and Hibernate validates the schema.
