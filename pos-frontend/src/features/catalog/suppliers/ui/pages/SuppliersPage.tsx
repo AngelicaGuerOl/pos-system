@@ -72,9 +72,6 @@ export const SuppliersPage = () => {
   return (
     <Stack spacing={3}>
       <PageHeader
-        actionIcon={<AddRoundedIcon />}
-        actionLabel="Nuevo proveedor"
-        onAction={() => setModal({ mode: 'create', open: true, supplier: null })}
         subtitle="Administra proveedores y conserva su informacion historica."
         title="Proveedores"
       />

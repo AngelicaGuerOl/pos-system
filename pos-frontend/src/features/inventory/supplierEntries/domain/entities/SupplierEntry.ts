@@ -1,4 +1,7 @@
 import type { PageResponse } from '../../../../../shared/types/PageResponse'
+import type { ProductUnit } from '../../../../catalog/products/domain/entities/Product'
+
+export type SupplierEntryType = 'SUPPLIER_PURCHASE' | 'INITIAL_INVENTORY'
 
 export type SupplierEntryItem = {
   id: number
@@ -13,9 +16,10 @@ export type SupplierEntryItem = {
 }
 
 export type SupplierEntry = {
-  id: number
-  supplierId: number
-  supplierName: string
+  id: number | null
+  entryType: SupplierEntryType
+  supplierId: number | null
+  supplierName: string | null
   entryDate: string
   registeredByUserId: number
   registeredByUsername: string
@@ -30,14 +34,22 @@ export type SupplierEntry = {
 }
 
 export type SupplierEntryItemMutation = {
-  productId: number
+  productId: number | null
+  newProduct?: {
+    barcode: string
+    name: string
+    categoryId: number
+    unit: ProductUnit
+    minimumStock?: number
+  } | null
   quantity: number
   unitCost: number
   salePrice: number
 }
 
 export type SupplierEntryMutation = {
-  supplierId: number
+  entryType: SupplierEntryType
+  supplierId: number | null
   entryDate: string
   notes?: string | null
   items: SupplierEntryItemMutation[]

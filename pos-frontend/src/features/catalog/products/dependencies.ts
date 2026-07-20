@@ -4,6 +4,8 @@ import { DeactivateProductUseCase } from './application/useCases/DeactivateProdu
 import { GetProductByBarcodeUseCase } from './application/useCases/GetProductByBarcodeUseCase'
 import { GetProductByIdUseCase } from './application/useCases/GetProductByIdUseCase'
 import { GetProductsUseCase } from './application/useCases/GetProductsUseCase'
+import { LookupBarcodeUseCase } from './application/useCases/LookupBarcodeUseCase'
+import { ReactivateProductUseCase } from './application/useCases/ReactivateProductUseCase'
 import { UpdateProductUseCase } from './application/useCases/UpdateProductUseCase'
 import { ProductRepositoryImpl } from './infrastructure/ProductRepositoryImpl'
 
@@ -13,7 +15,9 @@ export const productDependencies = {
   getProductsUseCase: new GetProductsUseCase(productRepository),
   getProductByIdUseCase: new GetProductByIdUseCase(productRepository),
   getProductByBarcodeUseCase: new GetProductByBarcodeUseCase(productRepository),
+  lookupBarcodeUseCase: new LookupBarcodeUseCase(productRepository),
   createProductUseCase: new CreateProductUseCase(productRepository),
   updateProductUseCase: new UpdateProductUseCase(productRepository),
   deactivateProductUseCase: new DeactivateProductUseCase(productRepository),
+  reactivateProductUseCase: new ReactivateProductUseCase(productRepository),
 } as const

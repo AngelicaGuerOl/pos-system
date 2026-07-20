@@ -21,15 +21,16 @@ export const InventoryMovementsGrid = ({ loading, movements }: InventoryMovement
     () => [
       {
         field: 'createdAt',
+        flex: 1,
         headerName: 'Fecha y hora',
-        minWidth: 190,
+        minWidth: 148,
         valueFormatter: ({ value }) => formatDateTime(value as string | null | undefined),
       },
       {
         field: 'productName',
-        flex: 1,
+        flex: 1.13,
         headerName: 'Producto',
-        minWidth: 220,
+        minWidth: 100,
         cellRenderer: ({ value }: { value?: string }) => (
           <Tooltip arrow title={value || ''}>
             <Typography noWrap sx={{ fontSize: 'inherit', fontWeight: 800 }}>
@@ -40,8 +41,9 @@ export const InventoryMovementsGrid = ({ loading, movements }: InventoryMovement
       },
       {
         field: 'productBarcode',
+        flex: 1,
         headerName: 'Codigo de barras',
-        minWidth: 170,
+        minWidth: 142,
         cellRenderer: ({ value }: { value?: string }) => (
           <Typography
             sx={{
@@ -59,15 +61,17 @@ export const InventoryMovementsGrid = ({ loading, movements }: InventoryMovement
       },
       {
         field: 'type',
+        flex: 1.0,
         headerName: 'Tipo',
-        minWidth: 170,
+        minWidth: 120,
         valueFormatter: ({ value }) =>
           INVENTORY_MOVEMENT_TYPE_LABELS[value as InventoryMovement['type']] ?? value,
       },
       {
         field: 'direction',
+        flex: 0.75,
         headerName: 'Dirección',
-        maxWidth: 140,
+        minWidth: 98,
         cellRenderer: ({ data }: { data?: InventoryMovement }) =>
           data ? (
             <Chip
@@ -80,32 +84,36 @@ export const InventoryMovementsGrid = ({ loading, movements }: InventoryMovement
       },
       {
         field: 'quantity',
+        flex: 0.7,
         headerName: 'Cantidad',
-        minWidth: 130,
+        minWidth: 88,
         valueFormatter: ({ value }) => formatNumber(Number(value)),
       },
       {
         field: 'previousStock',
+        flex: 0.85,
         headerName: 'Stock anterior',
-        minWidth: 150,
+        minWidth: 108,
         valueFormatter: ({ value }) => formatNumber(Number(value)),
       },
       {
         field: 'newStock',
+        flex: 0.85,
         headerName: 'Stock posterior',
-        minWidth: 150,
+        minWidth: 112,
         valueFormatter: ({ value }) => formatNumber(Number(value)),
       },
       {
         field: 'createdByUsername',
+        flex: 0.55,
         headerName: 'Usuario',
-        minWidth: 160,
+        minWidth: 100,
       },
       {
         field: 'description',
-        flex: 1,
+        flex: 1.1,
         headerName: 'Descripción',
-        minWidth: 260,
+        minWidth: 120,
         cellRenderer: ({ value }: { value?: string }) => (
           <Tooltip arrow title={value || ''}>
             <Typography noWrap sx={{ fontSize: 'inherit' }}>

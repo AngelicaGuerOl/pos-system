@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import type { PageResponse } from '../../../../shared/types/PageResponse'
-import type { Product, ProductFilters, ProductMutation } from '../domain/entities/Product'
+import type { BarcodeLookup, Product, ProductFilters, ProductMutation } from '../domain/entities/Product'
 import type { ProductRepository } from '../domain/repositories/ProductRepository'
 import { ProductMapper, type BackendProductResponse } from './mappers/ProductMapper'
 
@@ -17,6 +17,7 @@ export class ProductRepositoryImpl implements ProductRepository {
         search: filters.search || undefined,
         categoryId: filters.categoryId || undefined,
         supplierId: filters.supplierId || undefined,
+        active: filters.active === null ? undefined : filters.active ?? true,
         lowStock: filters.lowStock || undefined,
         page: filters.page ?? 0,
         size: filters.size ?? 50,
@@ -39,6 +40,21 @@ export class ProductRepositoryImpl implements ProductRepository {
     return ProductMapper.toEntity(data)
   }
 
+  async lookupBarcode(barcode: string): Promise<BarcodeLookup> {
+    const { data } = await this.client.get<BarcodeLookup>(`/products/barcode-lookup/${barcode}`)
+
+    return {
+      ...data,
+      existingProduct: data.existingProduct ? ProductMapper.toEntity(data.existingProduct) : null,
+      existingProductActive: data.existingProductActive ?? null,
+      existingProductId: data.existingProductId ?? null,
+      suggestedName: data.suggestedName ?? null,
+      brand: data.brand ?? null,
+      presentation: data.presentation ?? null,
+      source: data.source ?? null,
+    }
+  }
+
   async create(data: ProductMutation): Promise<Product> {
     const response = await this.client.post<BackendProductResponse>(
       '/products',
@@ -59,5 +75,9 @@ export class ProductRepositoryImpl implements ProductRepository {
 
   async deactivate(id: number): Promise<void> {
     await this.client.patch(`/products/${id}/deactivate`)
+  }
+
+  async reactivate(id: number): Promise<void> {
+    await this.client.patch(`/products/${id}/reactivate`)
   }
 }

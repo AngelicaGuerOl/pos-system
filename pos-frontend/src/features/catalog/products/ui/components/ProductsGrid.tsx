@@ -1,10 +1,10 @@
 import BlockRoundedIcon from '@mui/icons-material/BlockRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import { Box, IconButton, Stack, Tooltip, Typography } from '@mui/material'
 import { AllCommunityModule, ModuleRegistry, type ColDef } from 'ag-grid-community'
 import { AgGridReact } from 'ag-grid-react'
 import { useMemo } from 'react'
-import { StatusChip } from '../../../../../shared/ui/components/StatusChip'
 import {
   formatCurrency,
   formatNumber,
@@ -22,6 +22,7 @@ type ProductsGridProps = {
   products: Product[]
   onEdit: (product: Product) => void
   onDeactivate: (product: Product) => void
+  onReactivate: (product: Product) => void
 }
 
 export const ProductsGrid = ({
@@ -30,14 +31,16 @@ export const ProductsGrid = ({
   products,
   onEdit,
   onDeactivate,
+  onReactivate,
 }: ProductsGridProps) => {
   const columnDefs = useMemo<ColDef<Product>[]>(
     () => [
-      { field: 'id', headerName: 'ID', maxWidth: 90 },
+      { field: 'id', flex: 0.35, headerName: 'ID', minWidth: 52 },
       {
         field: 'barcode',
+        flex: 1,
         headerName: 'Codigo de barras',
-        minWidth: 170,
+        minWidth: 150,
         cellRenderer: ({ value }: { value?: string }) => (
           <Typography
             sx={{
@@ -55,9 +58,9 @@ export const ProductsGrid = ({
       },
       {
         field: 'name',
-        flex: 1,
+        flex: 1.2,
         headerName: 'Nombre',
-        minWidth: 220,
+        minWidth: 100,
         cellRenderer: ({ value }: { value?: string }) => (
           <Tooltip arrow title={value || ''}>
             <Typography noWrap sx={{ fontSize: 'inherit', fontWeight: 700 }}>
@@ -66,18 +69,20 @@ export const ProductsGrid = ({
           </Tooltip>
         ),
       },
-      { field: 'categoryName', headerName: 'Categoria', minWidth: 170 },
-      { field: 'supplierName', headerName: 'Proveedor', minWidth: 170, valueFormatter: ({ value }) => value ? String(value) : 'Sin proveedor' },
+      { field: 'categoryName', flex: 0.8, headerName: 'Categoria', minWidth: 100 },
+      { field: 'supplierName', flex: 0.9, headerName: 'Proveedor', minWidth: 112, valueFormatter: ({ value }) => value ? String(value) : 'Sin proveedor' },
       {
         field: 'unit',
+        flex: 0.55,
         headerName: 'Unidad',
-        maxWidth: 130,
+        minWidth: 82,
         valueFormatter: ({ value }) => PRODUCT_UNIT_LABELS[value as Product['unit']],
       },
       {
         field: 'costPrice',
+        flex: 0.85,
         headerName: 'Precio costo',
-        minWidth: 140,
+        minWidth: 116,
         cellRenderer: ({ data }: { data?: Product }) => data ? (
           data.costPriceKnown ? formatCurrency(data.costPrice) : (
             <Tooltip title="No se encontraba registrado en el archivo original.">
@@ -88,33 +93,30 @@ export const ProductsGrid = ({
       },
       {
         field: 'salePrice',
+        flex: 0.85,
         headerName: 'Precio venta',
-        minWidth: 140,
+        minWidth: 116,
         valueFormatter: ({ value }) => formatCurrency(Number(value)),
       },
       {
         field: 'currentStock',
+        flex: 0.75,
         headerName: 'Stock actual',
-        minWidth: 140,
+        minWidth: 104,
         valueFormatter: ({ value }) => formatNumber(Number(value)),
       },
       {
         field: 'minimumStock',
+        flex: 0.80,
         headerName: 'Stock minimo',
-        minWidth: 140,
+        minWidth: 104,
         valueFormatter: ({ value }) => formatNumber(Number(value)),
       },
       {
-        field: 'active',
-        headerName: 'Estado',
-        maxWidth: 130,
-        cellRenderer: ({ data }: { data?: Product }) =>
-          data ? <StatusChip active={data.active} /> : null,
-      },
-      {
         colId: 'actions',
+        flex: 0.65,
         headerName: 'Acciones',
-        width: 130,
+        minWidth: 96,
         sortable: false,
         filter: false,
         cellRenderer: ({ data }: { data?: Product }) => {
@@ -126,6 +128,7 @@ export const ProductsGrid = ({
             <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
               <Tooltip title="Editar">
                 <IconButton
+                  aria-label="Editar producto"
                   color="primary"
                   onClick={() => onEdit(data)}
                   size="small"
@@ -134,25 +137,37 @@ export const ProductsGrid = ({
                   <EditRoundedIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Desactivar">
-                <span>
+              {data.active ? (
+                <Tooltip title="Desactivar producto sin eliminar su historial">
                   <IconButton
+                    aria-label="Desactivar producto"
                     color="error"
-                    disabled={!data.active}
                     onClick={() => onDeactivate(data)}
                     size="small"
-                    sx={{ bgcolor: data.active ? 'error.50' : 'transparent' }}
+                    sx={{ bgcolor: 'error.50' }}
                   >
                     <BlockRoundedIcon fontSize="small" />
                   </IconButton>
-                </span>
-              </Tooltip>
+                </Tooltip>
+              ) : (
+                <Tooltip title="Reactivar producto">
+                  <IconButton
+                    aria-label="Reactivar producto"
+                    color="success"
+                    onClick={() => onReactivate(data)}
+                    size="small"
+                    sx={{ bgcolor: 'success.50' }}
+                  >
+                    <CheckCircleRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Stack>
           )
         },
       },
     ],
-    [canManage, onDeactivate, onEdit],
+    [canManage, onDeactivate, onEdit, onReactivate],
   )
 
   return (

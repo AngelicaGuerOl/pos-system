@@ -34,6 +34,7 @@ import { ProductsGrid } from '../components/ProductsGrid'
 import { useCreateProduct } from '../hooks/useCreateProduct'
 import { useDeactivateProduct } from '../hooks/useDeactivateProduct'
 import { useProducts } from '../hooks/useProducts'
+import { useReactivateProduct } from '../hooks/useReactivateProduct'
 import { useUpdateProduct } from '../hooks/useUpdateProduct'
 
 type ModalState =
@@ -66,13 +67,14 @@ export const ProductsPage = () => {
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
   const deactivateProduct = useDeactivateProduct()
+  const reactivateProduct = useReactivateProduct()
 
   const mutationError = useMemo(
-    () => createProduct.error ?? updateProduct.error ?? deactivateProduct.error,
-    [createProduct.error, deactivateProduct.error, updateProduct.error],
+    () => createProduct.error ?? updateProduct.error ?? deactivateProduct.error ?? reactivateProduct.error,
+    [createProduct.error, deactivateProduct.error, reactivateProduct.error, updateProduct.error],
   )
 
-  const mutationLoading = createProduct.loading || updateProduct.loading || deactivateProduct.loading
+  const mutationLoading = createProduct.loading || updateProduct.loading || deactivateProduct.loading || reactivateProduct.loading
 
   useEffect(() => {
     const supplierId = Number(searchParams.get('supplierId'))
@@ -109,6 +111,15 @@ export const ProductsPage = () => {
     if (success) {
       setMessage({ severity: 'success', text: 'Producto desactivado' })
       setProductToDeactivate(null)
+      await refetch()
+    }
+  }
+
+  const handleReactivate = async (product: Product) => {
+    const success = await reactivateProduct.reactivateProduct(product.id)
+
+    if (success) {
+      setMessage({ severity: 'success', text: 'Producto reactivado' })
       await refetch()
     }
   }
@@ -204,6 +215,26 @@ export const ProductsPage = () => {
               </Select>
             </FormControl>
 
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', lg: 160 } }}>
+              <InputLabel>Estado</InputLabel>
+              <Select
+                label="Estado"
+                onChange={(event) => {
+                  const value = String(event.target.value)
+                  setFilters({
+                    ...filters,
+                    active: value === 'all' ? null : value === 'active',
+                    page: 0,
+                  })
+                }}
+                value={filters.active === null ? 'all' : filters.active === false ? 'inactive' : 'active'}
+              >
+                <MenuItem value="active">Activos</MenuItem>
+                <MenuItem value="inactive">Inactivos</MenuItem>
+                <MenuItem value="all">Todos</MenuItem>
+              </Select>
+            </FormControl>
+
             <FormControlLabel
               control={
 	                <Checkbox
@@ -238,6 +269,7 @@ export const ProductsPage = () => {
 	              loading={loading}
 	              onDeactivate={setProductToDeactivate}
 	              onEdit={(product) => setModal({ mode: 'edit', open: true, product })}
+	              onReactivate={handleReactivate}
 	              products={products}
 	            />
 	          )}
@@ -269,7 +301,7 @@ export const ProductsPage = () => {
       <ConfirmDialog
         confirmText="Desactivar"
         loading={deactivateProduct.loading}
-        message={`El producto "${productToDeactivate?.name ?? ''}" dejara de estar disponible.`}
+        message={`El producto "${productToDeactivate?.name ?? ''}" dejara de estar disponible, pero no se eliminara ni perdera su historial.`}
         onCancel={() => setProductToDeactivate(null)}
         onConfirm={handleDeactivate}
         open={Boolean(productToDeactivate)}

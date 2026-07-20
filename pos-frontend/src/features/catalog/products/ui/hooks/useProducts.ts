@@ -6,7 +6,7 @@ import type { Product, ProductFilters } from '../../domain/entities/Product'
 
 export const useProducts = () => {
   const [productsPage, setProductsPage] = useState<PageResponse<Product> | null>(null)
-  const [filters, setFilters] = useState<ProductFilters>({ page: 0, size: 50 })
+  const [filters, setFilters] = useState<ProductFilters>({ active: true, page: 0, size: 50 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<NormalizedApiError | null>(null)
 

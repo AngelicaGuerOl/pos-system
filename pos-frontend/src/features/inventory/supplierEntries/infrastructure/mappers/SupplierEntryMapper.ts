@@ -7,12 +7,16 @@ export const SupplierEntryMapper = {
   toEntity(response: BackendSupplierEntryResponse): SupplierEntry {
     return {
       ...response,
+      id: response.id ?? null,
+      entryType: response.entryType ?? 'SUPPLIER_PURCHASE',
+      supplierId: response.supplierId ?? null,
+      supplierName: response.supplierName ?? null,
       totalCost: Number(response.totalCost),
       totalSaleValue: Number(response.totalSaleValue),
       historicalImport: response.historicalImport ?? false,
       sourceFile: response.sourceFile ?? null,
       sourceSheet: response.sourceSheet ?? null,
-      items: response.items.map((item) => ({
+      items: (response.items ?? []).map((item) => ({
         ...item,
         quantity: Number(item.quantity),
         unitCost: Number(item.unitCost),
@@ -31,10 +35,12 @@ export const SupplierEntryMapper = {
   toRequest(data: SupplierEntryMutation): SupplierEntryMutation {
     return {
       supplierId: data.supplierId,
+      entryType: data.entryType,
       entryDate: data.entryDate,
       notes: data.notes?.trim() || null,
       items: data.items.map((item) => ({
         productId: item.productId,
+        newProduct: item.newProduct ?? null,
         quantity: item.quantity,
         unitCost: item.unitCost,
         salePrice: item.salePrice,

@@ -20,10 +20,25 @@ export type Product = {
   updatedAt: string | null
 }
 
+export type BarcodeLookupStatus = 'LOCAL_PRODUCT_EXISTS' | 'EXTERNAL_MATCH' | 'NOT_FOUND'
+
+export type BarcodeLookup = {
+  status: BarcodeLookupStatus
+  barcode: string
+  existingProductId: number | null
+  existingProductActive: boolean | null
+  existingProduct: Product | null
+  suggestedName: string | null
+  brand: string | null
+  presentation: string | null
+  source: string | null
+}
+
 export type ProductFilters = {
   search?: string
   categoryId?: number | null
   supplierId?: number | null
+  active?: boolean | null
   lowStock?: boolean
   page?: number
   size?: number

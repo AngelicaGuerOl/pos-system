@@ -3,21 +3,25 @@ import {
   Box,
   Button,
   Alert,
+  CircularProgress,
   FormControl,
   FormHelperText,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
   Stack,
   TextField,
 } from '@mui/material'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import type { Category } from '../../../categories'
 import type { Supplier } from '../../../suppliers'
+import { productDependencies } from '../../dependencies'
 import {
   PRODUCT_UNIT_LABELS,
   PRODUCT_UNITS,
+  type BarcodeLookup,
   type Product,
   type ProductMutation,
 } from '../../domain/entities/Product'
@@ -45,6 +49,12 @@ const getDefaultValues = (product?: Product | null): ProductFormValues => ({
   minimumStock: product?.minimumStock ?? 0,
 })
 
+type LookupFeedback = {
+  severity: 'info' | 'warning'
+  text: string
+  duplicate: boolean
+}
+
 export const ProductForm = ({
   categories,
   suppliers,
@@ -59,14 +69,93 @@ export const ProductForm = ({
     handleSubmit,
     register,
     reset,
+    setValue,
   } = useForm<ProductFormValues>({
     defaultValues: getDefaultValues(initialValues),
     resolver: zodResolver(productSchema),
   })
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [lookupFeedback, setLookupFeedback] = useState<LookupFeedback | null>(null)
+  const pendingBarcodeRef = useRef<string | null>(null)
+  const lookupSequenceRef = useRef(0)
+  const barcodeInputRef = useRef<HTMLInputElement | null>(null)
+  const isCreateMode = !initialValues
 
   useEffect(() => {
     reset(getDefaultValues(initialValues))
+    setLookupFeedback(null)
+    setLookupLoading(false)
+    pendingBarcodeRef.current = null
   }, [initialValues, reset])
+
+  const applyLookupResponse = useCallback((lookup: BarcodeLookup) => {
+    if (lookup.status === 'LOCAL_PRODUCT_EXISTS') {
+      const productName = lookup.existingProduct?.name ? ` "${lookup.existingProduct.name}"` : ''
+      setLookupFeedback({
+        duplicate: true,
+        severity: 'warning',
+        text: lookup.existingProductActive === false
+          ? `Este codigo pertenece al producto inactivo${productName}. Reactivalo con el flujo actual antes de crear otro.`
+          : `Ya existe un producto con este codigo${productName}. No se puede duplicar.`,
+      })
+      return
+    }
+
+    if (lookup.status === 'EXTERNAL_MATCH' && lookup.suggestedName) {
+      setValue('name', lookup.suggestedName, { shouldDirty: true, shouldValidate: true })
+      setLookupFeedback({
+        duplicate: false,
+        severity: 'info',
+        text: 'Nombre sugerido completado desde el catalogo externo. Puedes editarlo antes de guardar.',
+      })
+      return
+    }
+
+    setLookupFeedback({
+      duplicate: false,
+      severity: 'info',
+      text: 'No encontramos informacion para este codigo. Puedes capturar el producto manualmente.',
+    })
+  }, [setValue])
+
+  const lookupBarcode = useCallback(async (barcodeValue: string) => {
+    const barcode = barcodeValue.trim()
+    if (!isCreateMode || barcode.length === 0 || pendingBarcodeRef.current === barcode) {
+      return
+    }
+
+    const requestSequence = lookupSequenceRef.current + 1
+    lookupSequenceRef.current = requestSequence
+    pendingBarcodeRef.current = barcode
+    setLookupLoading(true)
+    setLookupFeedback(null)
+
+    try {
+      const lookup = await productDependencies.lookupBarcodeUseCase.execute(barcode)
+      if (lookupSequenceRef.current === requestSequence) {
+        applyLookupResponse(lookup)
+      }
+    } catch {
+      if (lookupSequenceRef.current === requestSequence) {
+        setLookupFeedback({
+          duplicate: false,
+          severity: 'info',
+          text: 'No fue posible consultar el catalogo externo. Puedes capturar el producto manualmente.',
+        })
+      }
+    } finally {
+      if (lookupSequenceRef.current === requestSequence) {
+        setLookupLoading(false)
+        pendingBarcodeRef.current = null
+        window.setTimeout(() => barcodeInputRef.current?.focus(), 0)
+      }
+    }
+  }, [applyLookupResponse, isCreateMode])
+
+  const barcodeRegister = register('barcode', {
+    onChange: () => setLookupFeedback(null),
+  })
+  const submitDisabled = loading || lookupLoading || Boolean(lookupFeedback?.duplicate)
 
   return (
     <Box
@@ -133,31 +222,52 @@ export const ProductForm = ({
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
-            disabled={loading}
+            disabled={loading || lookupLoading}
             error={Boolean(errors.barcode)}
             fullWidth
-            helperText={errors.barcode?.message}
+            helperText={errors.barcode?.message ?? (isCreateMode ? 'Presiona Enter para buscar por codigo.' : undefined)}
             label="Codigo de barras"
-            {...register('barcode')}
+            slotProps={{
+              input: {
+                endAdornment: lookupLoading ? (
+                  <InputAdornment position="end">
+                    <CircularProgress size={20} />
+                  </InputAdornment>
+                ) : undefined,
+              },
+            }}
+            {...barcodeRegister}
+            inputRef={(element) => {
+              barcodeRegister.ref(element)
+              barcodeInputRef.current = element
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') {
+                return
+              }
+              event.preventDefault()
+              void lookupBarcode(barcodeInputRef.current?.value ?? '')
+            }}
           />
-          <TextField
-            disabled={loading}
-            error={Boolean(errors.name)}
-            fullWidth
-            helperText={errors.name?.message}
-            label="Nombre"
-            {...register('name')}
+          <Controller
+            control={control}
+            name="name"
+            render={({ field }) => (
+              <TextField
+                disabled={loading}
+                error={Boolean(errors.name)}
+                fullWidth
+                helperText={errors.name?.message}
+                label="Nombre"
+                {...field}
+              />
+            )}
           />
         </Stack>
 
-        <TextField
-          disabled={loading}
-          error={Boolean(errors.description)}
-          fullWidth
-          helperText={errors.description?.message}
-          label="Descripcion"
-          {...register('description')}
-        />
+        {lookupFeedback ? (
+          <Alert severity={lookupFeedback.severity}>{lookupFeedback.text}</Alert>
+        ) : null}
 
         <Controller
           control={control}
@@ -237,10 +347,10 @@ export const ProductForm = ({
         ) : null}
 
         <Stack direction="row" spacing={1.5} sx={{ justifyContent: 'flex-end' }}>
-          <Button disabled={loading} onClick={onCancel}>
+          <Button disabled={loading || lookupLoading} onClick={onCancel}>
             Cancelar
           </Button>
-          <Button disabled={loading} type="submit" variant="contained">
+          <Button disabled={submitDisabled} type="submit" variant="contained">
             Guardar
           </Button>
         </Stack>
