@@ -107,7 +107,7 @@ class ProductServiceImplTest {
         ProductUpdateRequest request = buildUpdateRequest();
         ProductResponse response = buildResponse(15L, "7.00");
 
-        when(productRepository.findByIdAndActiveTrue(15L)).thenReturn(Optional.of(product));
+        when(productRepository.findById(15L)).thenReturn(Optional.of(product));
         when(categoryRepository.findByIdAndActiveTrue(category.getId())).thenReturn(Optional.of(category));
         when(productRepository.existsByBarcodeIgnoreCaseAndIdNot("ABC123", 15L)).thenReturn(false);
         when(productMapper.toResponse(product)).thenReturn(response);

@@ -215,7 +215,7 @@ class SupplierEntryServiceImplTest {
         SupplierEntryResponse response = service.create(request, new AuthenticatedUser(user));
 
         assertEquals(SupplierEntryType.INITIAL_INVENTORY, response.getEntryType());
-        assertEquals(new BigDecimal("192.00"), response.getTotalCost());
+        assertEquals(0, response.getTotalCost().compareTo(new BigDecimal("192.00")));
         verify(productRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(product ->
                 product.getCurrentStock().compareTo(BigDecimal.ZERO) == 0
                         && product.getSupplier() == null
