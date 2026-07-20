@@ -1,126 +1,199 @@
-# Backup and Restore
+# Respaldos y restauración
 
-Backups are essential because NovaPOS stores operational data for sales, stock, cash sessions, customer credit accounts, payments, supplier entries, and supplier settlements.
+NovaPOS guarda información operativa en PostgreSQL: ventas, stock, caja, clientes, cuentas por cobrar, proveedores, cortes y usuarios. Los respaldos son obligatorios antes de restaurar, actualizar o mover la instalación a otra computadora.
 
-This document provides command patterns for the current Docker development database service.
+## Formato de respaldo
 
-For the Windows local store production installation, use the scripts instead:
+Los scripts de producción local crean archivos `.dump` en formato custom de PostgreSQL:
+
+```text
+pg_dump -Fc
+```
+
+La restauración usa:
+
+```text
+pg_restore
+```
+
+Este formato permite validar el archivo con `pg_restore -l` antes de restaurar.
+
+## Producción local en Windows
+
+Los scripts reales están en `scripts/` y usan:
+
+```powershell
+docker compose --env-file .env `
+  -f docker-compose.yml `
+  -f docker-compose.prod.yml
+```
+
+Crear respaldo:
 
 ```powershell
 .\scripts\backup.ps1
+```
+
+Ubicación por defecto:
+
+```text
+C:\NovaPOS-Backups
+```
+
+Nombre de archivo:
+
+```text
+novapos-yyyy-MM-dd_HH-mm-ss.dump
+```
+
+Crear respaldo en otra carpeta:
+
+```powershell
+.\scripts\backup.ps1 -BackupDirectory "D:\Respaldos\NovaPOS"
+```
+
+Crear respaldo local y copia externa/nube:
+
+```powershell
+.\scripts\backup.ps1 `
+  -BackupDirectory "C:\NovaPOS-Backups" `
+  -CloudBackupDirectory "G:\Mi unidad\NovaPOS-Backups"
+```
+
+`G:\Mi unidad\NovaPOS-Backups` es solo un ejemplo. La letra de unidad o la ubicación puede cambiar según la computadora y el servicio de sincronización configurado.
+
+El script:
+
+- valida que Docker esté disponible;
+- valida variables requeridas;
+- exige que el servicio `db` esté en ejecución;
+- ejecuta `pg_dump -Fc` dentro del contenedor;
+- valida el dump con `pg_restore -l`;
+- copia el archivo al equipo Windows;
+- comprueba que el archivo exista y no esté vacío;
+- elimina el archivo temporal del contenedor.
+
+## Registrar respaldo diario
+
+```powershell
+.\scripts\register-backup-task.ps1
+```
+
+Hora personalizada:
+
+```powershell
+.\scripts\register-backup-task.ps1 -Time "20:30"
+```
+
+Con copia externa:
+
+```powershell
+.\scripts\register-backup-task.ps1 `
+  -Time "12:30" `
+  -BackupDirectory "C:\NovaPOS-Backups" `
+  -CloudBackupDirectory "G:\Mi unidad\NovaPOS-Backups"
+```
+
+La computadora debe estar encendida, Docker Desktop debe estar funcionando y Windows debe permitir ejecutar la tarea.
+
+## Restauración en producción local
+
+La restauración reemplaza datos. Ejecútala solo si confirmas que el archivo corresponde a la instalación correcta.
+
+No se requiere restaurar un `.dump` para una instalación completamente nueva. Usa `restore.ps1` cuando necesites recuperar datos, mover NovaPOS a otra computadora o migrar una instalación existente desde un respaldo.
+
+```powershell
 .\scripts\restore.ps1 -BackupFile "C:\NovaPOS-Backups\novapos-fecha.dump"
 ```
 
-Those scripts use `.env`, `docker-compose.yml`, and `docker-compose.prod.yml`, create PostgreSQL custom-format backups with `pg_dump -Fc`, and avoid PowerShell pipelines for binary dump transport.
+El script:
 
-The commands assume the Docker Compose service name is `db`, which is the PostgreSQL service defined by the project. They use the database user and database name already available inside the container.
+- valida Docker y `.env`;
+- comprueba que el archivo exista y no esté vacío;
+- pide escribir exactamente `RESTORE`;
+- crea un respaldo preventivo antes de restaurar;
+- detiene `frontend` y `backend` para evitar escrituras;
+- mantiene `db` activo o lo inicia si hace falta;
+- copia el dump al contenedor;
+- valida con `pg_restore -l`;
+- cierra conexiones activas a la base objetivo;
+- ejecuta `pg_restore --clean --if-exists --no-owner --no-privileges --single-transaction`;
+- reinicia backend y frontend;
+- verifica que el frontend responda.
 
-## Backup Procedure
+No ejecutes restauraciones con usuarios operando el sistema.
 
-Create a local backup directory:
+## Verificación posterior
+
+Después de restaurar, revisar manualmente:
+
+- inicio de sesión;
+- usuarios;
+- categorías y productos;
+- existencias;
+- clientes;
+- ventas recientes;
+- caja;
+- cuentas por cobrar y abonos;
+- proveedores;
+- entradas de mercancía;
+- cortes de proveedor;
+- exportación Excel de cortes finalizados.
+
+El arranque del backend también valida el esquema por Flyway y `ddl-auto=validate`.
+
+## Recuperación en otra computadora
+
+1. En la computadora actual, ejecutar:
+
+```powershell
+.\scripts\backup.ps1
+```
+
+2. Copiar el proyecto a la nueva computadora.
+3. Instalar Docker Desktop.
+4. Crear `.env` desde `.env.example` y configurar secretos reales.
+5. Ejecutar:
+
+```powershell
+.\scripts\install.ps1
+```
+
+6. Copiar el `.dump` a `C:\NovaPOS-Backups`.
+7. Restaurar:
+
+```powershell
+.\scripts\restore.ps1 -BackupFile "C:\NovaPOS-Backups\novapos-fecha.dump"
+```
+
+8. Verificar usuarios, productos, existencias, ventas, proveedores, cuentas por cobrar y una venta de prueba.
+
+## Desarrollo
+
+Para respaldar la base del stack de desarrollo:
 
 ```bash
 mkdir -p backups
-```
-
-Create a compressed PostgreSQL backup from the `db` service:
-
-```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T db \
   sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
   > backups/novapos-$(date +%F).dump
 ```
 
-PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force backups | Out-Null
-
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T db `
-  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f /tmp/novapos.dump'
-
-docker compose -f docker-compose.yml -f docker-compose.dev.yml cp `
-  db:/tmp/novapos.dump backups/novapos-local.dump
-
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T db `
-  rm -f /tmp/novapos.dump
-```
-
-The command uses database credentials already configured inside the PostgreSQL container. Do not place real passwords in command history or documentation.
-
-Keep backup files outside public repository history. If a backup must be moved between machines, transfer it through a secure channel and restrict access to people who are allowed to view store data.
-
-Use a filename that includes the date and, when useful, a short environment label such as `local` or `store-pc`. Avoid putting customer, supplier, or sales details in the filename.
-
-## Restore Procedure
-
-Restoration can overwrite data. Stop application writes before restoring and make a safety backup of the current database first.
-
-1. Stop the backend and frontend or ensure no users are writing data.
-2. Create a safety backup.
-3. Confirm the target database.
-4. Restore the dump.
-5. Restart services.
-6. Verify business data.
-
-Example restore command:
+Restaurar en desarrollo:
 
 ```bash
 cat backups/novapos-YYYY-MM-DD.dump | docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T db \
   sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists'
 ```
 
-PowerShell:
+Advertencia: `--clean --if-exists` elimina objetos existentes antes de restaurarlos.
 
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.dev.yml cp `
-  backups/novapos-local.dump db:/tmp/novapos.dump
+## Reglas de seguridad
 
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T db `
-  sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists /tmp/novapos.dump'
-
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T db `
-  rm -f /tmp/novapos.dump
-```
-
-Warning: `--clean --if-exists` drops existing database objects before restoring them. Use only with the correct target database and a confirmed backup.
-
-If Flyway migrations have changed since the backup was created, restore into a test database first and start the backend to let validation confirm whether the schema is compatible.
-
-Do not restore a dump into a database that is actively being used by cashiers. A restore should be treated as a maintenance operation because it can replace current sales, cash session, inventory, receivable, and supplier settlement data.
-
-## Verification Checklist
-
-After restoring, verify:
-
-- Users can log in.
-- Products and categories are present.
-- Current stock values are correct.
-- Recent sales and sale details are present.
-- Cash sessions and cash movements are present.
-- Receivable balances and payments are present.
-- Supplier entries are present.
-- Supplier settlements and settlement details are present.
-- Excel export still works for finalized supplier settlements.
-
-Also verify that the backend starts successfully after restoration. With `ddl-auto=validate`, startup is a useful schema compatibility check because Hibernate validates the database structure against the mapped entities.
-
-## Recommended Policy
-
-Recommended local operating policy:
-
-- Create a database backup at least daily.
-- Back up before application updates or schema migrations.
-- Keep multiple retained copies.
-- Store at least one copy outside the store computer.
-- Test restoration periodically on a non-production copy.
-
-This is a recommendation. The local store production scripts include a Windows Task Scheduler helper in `scripts/register-backup-task.ps1`.
-
-For a small local installation, the most important habit is consistency: create backups before risky operations and verify periodically that at least one recent backup can actually be restored.
-
-Backups should be considered part of store operations, not only a technical task. A recent backup is especially important before importing historical data, applying new Flyway migrations, changing Docker volumes, or replacing the machine that hosts the database.
-
----
-
-[Back to Technical Documentation](README.md)
+- No guardar `.dump` en Git.
+- No subir respaldos con datos reales a repositorios públicos.
+- Conservar copias fuera de la computadora principal.
+- Probar restauración periódicamente en un entorno no productivo.
+- Crear respaldo antes de actualizar o importar datos históricos.
+- No usar `docker compose down -v` para resolver errores.
+- No eliminar el volumen `pos_postgres_prod_data` sin respaldo confirmado.

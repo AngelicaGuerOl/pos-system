@@ -1,46 +1,37 @@
-# NovaPOS Technical Documentation
+# NovaPOS Documentation
 
-This directory contains the technical documentation for NovaPOS. It is intended for developers, maintainers, and technical reviewers who need to understand how the system is structured, how it runs locally, and which business rules are enforced by the backend.
+This directory contains NovaPOS technical, functional, and operational documentation. It is intended for developers, maintainers, and technical reviewers who need to understand the system without reading the entire codebase first.
 
-The main project overview remains in the [root README](../README.md). These documents go deeper into architecture, persistence, security, installation, testing, backup operations, and historical data import without duplicating the complete OpenAPI specification.
+The main project entry points are [README.md](../README.md) in English and [README.es.md](../README.es.md) in Spanish.
 
-Use this directory as the starting point when onboarding to the codebase or reviewing how the implementation is organized. The documents describe verified behavior from the local repository: Spring configuration, Docker Compose services, Flyway migrations, security rules, frontend feature structure, and existing tests.
+## Main Index
 
-For endpoint-level request and response details, run the backend with the `dev` profile and use Swagger UI instead of copying endpoint tables into Markdown. Keeping API contracts in Swagger and long-lived technical context in this directory reduces duplication and makes the documentation easier to maintain.
+- [Architecture](architecture.md): system overview, components, request flows, modules, and architectural decisions.
+- [Backend](backend.md): Spring Boot structure, layers, security, DTOs, services, repositories, MapStruct, profiles, and backend tests.
+- [Frontend](frontend.md): React structure, routes, features, forms, validation, tables, HTTP client, and verification.
+- [Database](database.md): PostgreSQL, Flyway, main tables, relationships, constraints, indexes, and migration rules.
+- [API](api.md): base URL, authentication, errors, pagination, Swagger, and endpoint groups.
+- [Local development](development.md): Docker, Maven, and npm execution for day-to-day development.
+- [Testing](testing.md): real commands, existing test scope, and current limitations.
+- [User guide](user-guide.md): Spanish user-facing guide for sales, cash, inventory, accounts receivable, and suppliers.
+- [Local production deployment](store-deployment.md): Spanish Windows/Docker Desktop installation and operation guide for store support.
+- [Backup and restore](backup-restore.md): Spanish operational guide for `.dump` backups, validation, restore, and computer recovery.
+- [Technical decisions](technical-decisions.md): simplified ADR-style record of the main technical decisions.
+- [Portfolio case study](portfolio-case-study.md): technical project story, scope, challenges, and current state.
 
-## Documents
+## Supporting Documents
 
-- [Architecture](architecture.md)  
-  Explains the high-level system design, backend and frontend layering, request flow, Docker services, and important architectural decisions.
+- [Business rules](business-rules.md): backend-enforced rules for sales, cash, inventory, accounts receivable, and suppliers.
+- [Security](security.md): JWT authentication, roles, CORS, profiles, errors, and current security scope.
+- [Legacy import](legacy-import.md): controlled spreadsheet migration through a dedicated backend profile.
 
-- [Business Rules](business-rules.md)  
-  Describes the core rules enforced by the backend for users, cash sessions, sales, inventory, accounts receivable, returns, cancellations, suppliers, and supplier settlements.
+## Sources Of Truth
 
-- [Database](database.md)  
-  Summarizes the PostgreSQL schema, main tables, relationships, constraints, indexes, transactions, and Flyway migration rules.
+- Detailed HTTP contracts: Swagger UI when the backend runs with the `dev` profile.
+- Database schema: Flyway migrations in `pos-backend/src/main/resources/db/migration`.
+- Runtime configuration: `application*.yml`, `.env.example`, and Docker Compose files.
+- Windows local operation: scripts in `scripts/`.
 
-- [Security](security.md)  
-  Documents JWT authentication, password handling, role authorization, public/protected areas, error handling, CORS, profiles, and the current security scope.
+## Accuracy Note
 
-- [Installation](installation.md)  
-  Provides the verified setup paths for local development and the Docker-based development stack.
-
-- [Local Store Deployment](store-deployment.md)
-  Explains the Windows Docker Desktop installation for daily store use with production containers, Nginx, scripts, shortcuts, and backups.
-
-- [Production Changes Explained](produccion.md)
-  Documents the production files, scripts, Compose override, Nginx behavior, commands executed, and verification rationale.
-
-- [Testing](testing.md)  
-  Describes the current backend test coverage, frontend quality checks, verification commands, and manual regression flows.
-
-- [Backup and Restore](backup-restore.md)  
-  Provides safe PostgreSQL backup and restore procedures for the Docker database service.
-
-- [Legacy Data Import](legacy-import.md)  
-  Explains the historical spreadsheet import process, snapshot rules, idempotency, and data privacy considerations.
-
-## Additional Resources
-
-- [Main Project README](../README.md)
-- Swagger UI: `http://localhost:8080/swagger-ui.html` when the backend runs with the `dev` profile.
+This documentation describes the current project state. Capabilities that are not implemented, such as CI, automated frontend tests, refresh tokens, MFA, rate limiting, or cloud deployment, are documented as limitations or roadmap items rather than finished features.
