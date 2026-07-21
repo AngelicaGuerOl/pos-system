@@ -63,7 +63,7 @@ Each feature usually separates:
 
 ## Pages And Routes
 
-Routes confirmed in `routePaths.ts` and `routes.tsx`:
+Routes confirmed in `shared/routes/routePaths.ts` and `app/router/routes.tsx`:
 
 | Route | Module |
 | --- | --- |
@@ -136,10 +136,20 @@ The application implements loading, error, and empty states in the main modules 
 - Categories, products, customers, and users.
 - Cash: opening, movements, and closing.
 - Sales: new sale, barcode search, history, detail, cancellations, and returns.
+- Products: local duplicate detection and optional Open Food Facts suggestions when creating products by barcode.
 - Accounts receivable: customer summary, detail, and payments.
 - Inventory: manual movements and lookup.
-- Suppliers: catalog, opening inventory, merchandise entries, and settlements.
+- Suppliers: catalog, opening inventory, merchandise entries with barcode lookup, and settlements.
 - Operations report.
+
+## Open Food Facts In The UI
+
+The frontend uses `LookupBarcodeUseCase` and `ProductRepositoryImpl.lookupBarcode()` to call `/products/barcode-lookup/{barcode}`. The flow is used in two screens:
+
+- Product form: pressing Enter in the barcode field searches for duplicates. If the barcode exists locally, the form blocks duplicate creation and shows the existing product context. If Open Food Facts returns a match, the product name is filled as an editable suggestion.
+- Supplier inventory receiving: scanning a barcode adds an existing local product when found. If the barcode is new and Open Food Facts returns data, the screen creates a temporary editable line with the suggested name, brand, and presentation. If no data is found or the external catalog is unavailable, the operator can still enter the product manually.
+
+The UI does not save Open Food Facts data automatically. The operator must review category, unit, costs, sale price, quantity, supplier context, and any suggested text before saving.
 
 ## Frontend Tests And Verification
 

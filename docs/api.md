@@ -78,6 +78,7 @@ HTTP codes used by the backend:
 | `403 Forbidden` | Insufficient role or required password change. |
 | `404 Not Found` | Resource not found. |
 | `409 Conflict` | Business conflict or duplicate. |
+| `503 Service Unavailable` | External product catalog unavailable. |
 | `500 Internal Server Error` | Unhandled failure. |
 
 ## Pagination
@@ -125,8 +126,24 @@ The following is a summarized list confirmed from controllers. Use Swagger UI fo
 | `GET` | `/api/products` | `ADMIN`, `CASHIER` |
 | `GET` | `/api/products/{id}` | `ADMIN`, `CASHIER` |
 | `GET` | `/api/products/barcode/{barcode}` | `ADMIN`, `CASHIER` |
+| `GET` | `/api/products/barcode-lookup/{barcode}` | `ADMIN`, `CASHIER` |
 | `PUT` | `/api/products/{id}` | `ADMIN` |
 | `PATCH` | `/api/products/{id}/deactivate` | `ADMIN` |
+| `PATCH` | `/api/products/{id}/reactivate` | `ADMIN` |
+
+`GET /api/products/barcode/{barcode}` is the local product lookup endpoint and returns an existing `ProductResponse`.
+
+`GET /api/products/barcode-lookup/{barcode}` is the enriched lookup used by product creation and supplier inventory receiving. It first searches the local catalog. If the barcode is not registered locally and is numeric with 6 to 18 digits, the backend queries Open Food Facts at `/api/v3/product/{barcode}` requesting only `code`, `product_name_es`, `product_name`, `brands`, and `quantity`.
+
+The enriched lookup returns:
+
+| Status | Meaning |
+| --- | --- |
+| `LOCAL_PRODUCT_EXISTS` | A local product already uses the barcode. The response includes the existing product id, active state, and product data. |
+| `EXTERNAL_MATCH` | Open Food Facts returned usable product data. The response can include `suggestedName`, `brand`, `presentation`, and `source=OPEN_FOOD_FACTS`. |
+| `NOT_FOUND` | The barcode was not found locally and did not produce a usable Open Food Facts match. |
+
+The external lookup has a 2-second connection timeout and 3-second read timeout. Open Food Facts `404` responses become `NOT_FOUND`; rate limits, server errors, or client connectivity failures are surfaced as external catalog unavailability. This external lookup requires Internet access, but core local POS workflows do not.
 
 ### Customers And Accounts Receivable
 

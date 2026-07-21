@@ -47,7 +47,10 @@ Main variables:
 | `SPRING_PROFILES_ACTIVE` | Spring profile when running in Docker. |
 | `JWT_SECRET`, `JWT_EXPIRATION_MINUTES` | JWT configuration. |
 | `BOOTSTRAP_ADMIN_*` | Initial administrator user when enabled. |
+| `OPEN_FOOD_FACTS_BASE_URL`, `OPEN_FOOD_FACTS_USER_AGENT` | Optional external barcode lookup configuration. |
 | `PGADMIN_*` | pgAdmin in the development stack. |
+
+Open Food Facts lookup defaults to `https://world.openfoodfacts.org` when no custom base URL is provided. For real use, set a clear `OPEN_FOOD_FACTS_USER_AGENT` value in local configuration so external requests identify the application/contact context. The lookup is optional for product capture; if Internet access is unavailable, products can still be entered manually.
 
 ## Option A: PostgreSQL In Docker, Backend And Frontend Local
 

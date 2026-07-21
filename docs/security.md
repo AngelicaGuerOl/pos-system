@@ -65,6 +65,7 @@ Errors are returned as JSON with `ErrorResponse`:
 - `403 Forbidden`: insufficient role or pending password change.
 - `404 Not Found`: missing resource.
 - `409 Conflict`: business conflict.
+- `503 Service Unavailable`: external product catalog unavailable.
 - `500 Internal Server Error`: unhandled error.
 
 ## CORS And Profiles

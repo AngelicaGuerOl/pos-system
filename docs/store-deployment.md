@@ -79,6 +79,17 @@ NOVAPOS_BIND_ADDRESS=127.0.0.1
 NOVAPOS_FRONTEND_PORT=80
 ```
 
+### Variables opcionales para consulta externa de productos
+
+NovaPOS puede consultar Open Food Facts cuando se captura un código de barras que no existe en el catálogo local. Esta consulta es opcional y requiere Internet solo para ese apoyo de captura; las operaciones principales de tienda siguen funcionando localmente mientras Docker Desktop y los contenedores estén activos.
+
+`docker-compose.yml` define valores por defecto, pero para uso real conviene dejar explícito un `User-Agent` que identifique la instalación o contacto del proyecto:
+
+```env
+OPEN_FOOD_FACTS_BASE_URL=https://world.openfoodfacts.org
+OPEN_FOOD_FACTS_USER_AGENT=NovaPOS/1.0 (contacto@example.com)
+```
+
 ### Variables utilizadas solo en desarrollo
 
 Estas variables están en `.env.example` para el stack de desarrollo. En producción local, `docker-compose.prod.yml` no publica PostgreSQL ni backend al host, y pgAdmin queda bajo el perfil `dev-tools`.

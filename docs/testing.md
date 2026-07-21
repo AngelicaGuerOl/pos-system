@@ -24,7 +24,7 @@ Existing tests confirmed under `pos-backend/src/test/java`:
 | Module | Existing coverage |
 | --- | --- |
 | Application | Spring context loading. |
-| Products | Product service. |
+| Products | Product service, barcode lookup service, and Open Food Facts client. |
 | Inventory | Controller, service, and manual movement validation. |
 | Cash | Movement controller/service and cash session service. |
 | Sales | Controller, service, and request validation. |
@@ -33,7 +33,7 @@ Existing tests confirmed under `pos-backend/src/test/java`:
 | Payments | Controller and service. |
 | Dashboard | Summary service. |
 | Reports | Operations report service. |
-| Suppliers | Supplier service. |
+| Suppliers | Supplier service and supplier entry service. |
 | Supplier settlements | Excel export. |
 
 Command:

@@ -33,6 +33,7 @@ NovaPOS ejecuta el frontend, el backend y la base de datos localmente mediante D
 - Usa un frontend React y TypeScript organizado por features, con hooks, casos de uso, repositorios, Material UI, AG Grid, React Hook Form y Zod.
 - Aplica autenticación JWT, autorización por roles, cambio obligatorio de contraseña y permisos de negocio controlados por el backend.
 - Maneja ventas transaccionales, movimientos de inventario, sesiones de caja, cuentas por cobrar, registro de mercancía y cortes de proveedor.
+- Soporta búsqueda por código de barras con productos locales y consulta opcional a Open Food Facts cuando el producto no está registrado localmente.
 - Incluye ejecución local con Docker, despliegue local de producción con Nginx, procedimientos de respaldo y restauración de PostgreSQL, Swagger/OpenAPI en desarrollo y pruebas backend automatizadas.
 
 ## Funcionalidades principales
@@ -40,9 +41,13 @@ NovaPOS ejecuta el frontend, el backend y la base de datos localmente mediante D
 ### Ventas e inventario
 
 - Ventas de contado y fiadas con búsqueda de productos por código de barras.
+- La búsqueda por código de barras revisa primero el catálogo local y puede consultar Open Food Facts para códigos numéricos no registrados.
+- Los resultados de Open Food Facts se usan como sugerencias editables de nombre, marca y presentación durante la creación de productos y la recepción de mercancía.
 - Historial y detalle de ventas, cancelaciones y devoluciones de productos.
 - Actualización de stock mediante ventas, devoluciones, cancelaciones, entradas de proveedor, cortes de proveedor y movimientos manuales de inventario.
 - Catálogo de productos con categorías, precios, stock, stock mínimo, estado activo, relación con proveedores y visualización de productos con bajo stock en el dashboard.
+
+La consulta externa por código de barras tiene un alcance limitado. NovaPOS no crea productos automáticamente desde Open Food Facts; solo propone datos que la persona operadora puede revisar y editar antes de guardar. Si el producto ya existe localmente, el sistema informa el producto existente para evitar duplicados. Si el servicio externo no está disponible o el código no se encuentra, el producto puede capturarse manualmente. Esta consulta requiere Internet, pero los flujos principales del punto de venta siguen funcionando sin Internet mientras Docker Desktop y los contenedores locales estén activos.
 
 ### Caja
 
@@ -150,7 +155,7 @@ El backend es la fuente de verdad para los permisos mediante Spring Security. La
 
 Docker Compose carga la configuración desde el archivo `.env` de la raíz, creado a partir de `.env.example`. Reemplaza las credenciales de base de datos y JWT antes de utilizar el sistema con datos reales y nunca subas secretos al repositorio. La ejecución directa con Maven y Vite puede requerir variables de entorno o configuración específica de cada proyecto, como se explica en [Desarrollo local](docs/development.md).
 
-Las variables principales incluyen `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `SPRING_PROFILES_ACTIVE`, `VITE_API_BASE_URL` y `BOOTSTRAP_ADMIN_*`.
+Las variables principales incluyen `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `SPRING_PROFILES_ACTIVE`, `VITE_API_BASE_URL`, `BOOTSTRAP_ADMIN_*` y `OPEN_FOOD_FACTS_*`.
 
 ### Desarrollo
 

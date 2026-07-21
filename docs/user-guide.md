@@ -39,6 +39,8 @@ Flujo disponible para `ADMIN`:
 3. Captura nombre, código de barras, categoría, unidad, precios, stock mínimo y proveedor si aplica.
 4. Guarda.
 
+Al crear un producto, puedes capturar el código de barras y presionar Enter para buscarlo. NovaPOS revisa primero si el código ya existe en el catálogo local. Si ya existe, muestra una advertencia para evitar duplicados. Si no existe y hay conexión a Internet, puede consultar Open Food Facts y completar un nombre sugerido con marca o presentación cuando esa información esté disponible. La sugerencia puede editarse antes de guardar. Si no hay información o no hay Internet, captura el producto manualmente.
+
 Los productos pueden desactivarse en lugar de eliminarse. Esto conserva históricos de ventas e inventario.
 
 ## Registrar categorías
@@ -88,6 +90,8 @@ Flujo disponible para `ADMIN`:
 3. Agrega productos del proveedor.
 4. Captura cantidades, costos y precios de venta cuando aplique.
 5. Guarda la entrada.
+
+En la recepción de mercancía también puedes escanear o capturar códigos de barras. Si el producto ya existe, se agrega a la entrada. Si es un producto nuevo, NovaPOS puede usar Open Food Facts como apoyo para sugerir nombre, marca y presentación; después debes completar los datos comerciales de la tienda, como categoría, unidad, costo, precio de venta y cantidad. La consulta externa no reemplaza la revisión del operador.
 
 El sistema actualiza stock, registra la entrada histórica y crea movimientos de inventario.
 

@@ -67,7 +67,7 @@ The typical module structure includes:
 
 - `auth`: login, current user, and password change.
 - `user`: user management, roles, active/inactive users, and safeguards against leaving the system without active administrators.
-- `catalog/category` and `catalog/product`: catalogs, search, pagination, update, and deactivation.
+- `catalog/category` and `catalog/product`: catalogs, search, pagination, update, deactivation, reactivation, local barcode lookup, and optional Open Food Facts lookup for unregistered barcodes.
 - `customer`: customers for sales and accounts receivable.
 - `cash/session`: opening, lookup, closing, closing preview, and session history.
 - `cash/movement`: manual inflows/outflows, summaries, and session movements.
@@ -81,6 +81,19 @@ The typical module structure includes:
 - `supplier/settlement`: supplier settlements, finalization, and Excel export.
 - `dashboard` and `report`: operational summary and administrative reports.
 - `legacy/importer`: controlled historical import through the `legacy-import` profile.
+
+## Open Food Facts Barcode Lookup
+
+The product catalog includes two barcode lookup paths:
+
+- `/api/products/barcode/{barcode}` searches only the local catalog and returns an existing product.
+- `/api/products/barcode-lookup/{barcode}` searches the local catalog first and, when the barcode is not local, can query Open Food Facts.
+
+External lookup is limited to numeric barcodes with 6 to 18 digits. The backend requests only a small field set from Open Food Facts: `code`, `product_name_es`, `product_name`, `brands`, and `quantity`. The response is normalized into `BarcodeLookupResponse` with one of three statuses: `LOCAL_PRODUCT_EXISTS`, `EXTERNAL_MATCH`, or `NOT_FOUND`.
+
+Open Food Facts data is treated as a suggestion, not as trusted catalog data. NovaPOS does not create a product automatically from the external response; the frontend uses the suggested name, brand, and presentation to help the operator complete the product or supplier entry form. If the external service is unavailable, the user can continue with manual capture.
+
+Configuration is read through `app.open-food-facts.base-url` and `app.open-food-facts.user-agent`, backed by `OPEN_FOOD_FACTS_BASE_URL` and `OPEN_FOOD_FACTS_USER_AGENT`. The RestClient uses a 2-second connection timeout and 3-second read timeout.
 
 ## Security
 

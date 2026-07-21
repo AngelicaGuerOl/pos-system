@@ -33,6 +33,7 @@ NovaPOS runs its frontend, backend, and database locally through Docker. Core st
 - Uses a feature-based React and TypeScript frontend with hooks, use cases, repositories, Material UI, AG Grid, React Hook Form, and Zod.
 - Applies JWT authentication, role-based authorization, forced password-change handling, and backend-enforced business permissions.
 - Handles transactional sales, inventory movements, cash sessions, accounts receivable, inventory receiving, and supplier settlements.
+- Supports barcode lookup with local products and optional Open Food Facts lookup when a product is not registered locally.
 - Includes local Docker execution, local production deployment with Nginx, PostgreSQL backup and restore procedures, Swagger/OpenAPI in development, and automated backend tests.
 
 ## Main Features
@@ -40,9 +41,13 @@ NovaPOS runs its frontend, backend, and database locally through Docker. Core st
 ### Sales and Inventory
 
 - Cash and credit sales with barcode product lookup.
+- Barcode lookup first checks the local catalog and can optionally query Open Food Facts for unregistered numeric barcodes.
+- Open Food Facts results are used as editable suggestions for product name, brand, and presentation during product creation and inventory receiving.
 - Sale history, sale details, cancellations, and product returns.
 - Stock updates through sales, returns, cancellations, supplier entries, supplier settlements, and manual inventory movements.
 - Product catalog with categories, prices, stock, minimum stock, active status, supplier relationships, and low-stock dashboard visibility.
+
+The external barcode lookup is intentionally limited. NovaPOS does not create products automatically from Open Food Facts; it only suggests data that the operator can review and edit before saving. If the product already exists locally, the system reports the existing product instead of creating a duplicate. If the external service is unavailable or the barcode is not found, the product can still be captured manually. This lookup requires Internet access, but the core local POS workflows continue to run without Internet while Docker Desktop and the local containers are active.
 
 ### Cash Management
 
@@ -150,7 +155,7 @@ The backend is the source of truth for permissions through Spring Security. Fron
 
 Docker Compose reads configuration from the root `.env` file, created from `.env.example`. Replace database and JWT credentials before real use, and never commit secrets. Direct Maven and Vite execution may require environment variables or project-specific configuration, as explained in [Local development](docs/development.md).
 
-Key variables include `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `SPRING_PROFILES_ACTIVE`, `VITE_API_BASE_URL`, and `BOOTSTRAP_ADMIN_*`.
+Key variables include `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `SPRING_PROFILES_ACTIVE`, `VITE_API_BASE_URL`, `BOOTSTRAP_ADMIN_*`, and `OPEN_FOOD_FACTS_*`.
 
 ### Development
 
