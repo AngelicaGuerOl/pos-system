@@ -16,13 +16,9 @@ Current status: functional application under active development. The project cur
 | --- | --- |
 | ![Accounts receivable](docs/images/readme/03-accounts-receivable.png) | ![Cash closing](docs/images/readme/04-cash-closing.png) |
 
-### Supplier Settlement
-
-![Supplier settlement](docs/images/readme/05-supplier-settlement.png)
-
-### Inventory Receiving
-
-![Inventory receiving](docs/images/readme/RegistroMercancia.png)
+| Supplier Settlement | Inventory Receiving |
+| --- | --- |
+| ![Supplier settlement](docs/images/readme/05-supplier-settlement.png) | ![Inventory receiving](docs/images/readme/RegistroMercancia.png) |
 
 ## Problem It Solves
 

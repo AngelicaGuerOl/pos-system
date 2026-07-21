@@ -16,13 +16,9 @@ Estado actual: aplicación funcional en desarrollo activo. El proyecto incluye a
 | --- | --- |
 | ![Cuentas por cobrar](docs/images/readme/03-accounts-receivable.png) | ![Cierre de caja](docs/images/readme/04-cash-closing.png) |
 
-### Corte de proveedor
-
-![Corte de proveedor](docs/images/readme/05-supplier-settlement.png)
-
-### Registro de mercancía
-
-![Registro de mercancía](docs/images/readme/RegistroMercancia.png)
+| Corte de proveedor | Registro de mercancía |
+| --- | --- |
+| ![Corte de proveedor](docs/images/readme/05-supplier-settlement.png) | ![Registro de mercancía](docs/images/readme/RegistroMercancia.png) |
 
 ## Problema que resuelve
 
