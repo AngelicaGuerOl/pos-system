@@ -70,6 +70,34 @@ Revisa que `.env` tenga las variables requeridas para la instalación de tienda.
 - `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 
+### Generar `JWT_SECRET`
+
+`JWT_SECRET` debe ser un valor Base64/Base64URL que al decodificarse tenga al menos 32 bytes. Si tienes OpenSSL disponible, puedes generarlo con:
+
+```bash
+openssl rand -base64 32
+```
+
+Copia el resultado completo en `.env`:
+
+```env
+JWT_SECRET=pega_aqui_el_valor_generado
+```
+
+No uses el valor de ejemplo de `.env.example` en una instalación real.
+
+### Administrador inicial
+
+Las variables `BOOTSTRAP_ADMIN_*` permiten crear el primer usuario `ADMIN` activo cuando el sistema inicia y no existe ningún administrador activo:
+
+```env
+BOOTSTRAP_ADMIN_ENABLED=true
+BOOTSTRAP_ADMIN_USERNAME=admin
+BOOTSTRAP_ADMIN_PASSWORD=usa_una_contraseña_temporal_fuerte
+```
+
+`BOOTSTRAP_ADMIN_PASSWORD` debe tener al menos 8 caracteres. En una tienda real no uses contraseñas de ejemplo como `Admin12345`. El usuario creado por bootstrap queda con cambio obligatorio de contraseña, por lo que debe iniciar sesión y definir una contraseña nueva antes de operar normalmente.
+
 ### Variables opcionales de publicación local
 
 `docker-compose.prod.yml` define valores por defecto para publicar NovaPOS solo en la computadora local. Puedes agregar estas variables si quieres dejarlas explícitas:

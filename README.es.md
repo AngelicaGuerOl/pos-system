@@ -20,6 +20,10 @@ Estado actual: aplicación funcional en desarrollo activo. El proyecto incluye a
 
 ![Corte de proveedor](docs/images/readme/05-supplier-settlement.png)
 
+### Registro de mercancía
+
+![Registro de mercancía](docs/images/readme/RegistroMercancia.png)
+
 ## Problema que resuelve
 
 Las tiendas pequeñas necesitan registrar ventas, controlar existencias, administrar caja, dar seguimiento a ventas fiadas, registrar abonos y gestionar mercancía de proveedores sin depender de hojas de cálculo dispersas o cálculos manuales. NovaPOS centraliza estos flujos en una aplicación web local que puede ejecutarse con Docker en la computadora de la tienda.
@@ -156,6 +160,8 @@ El backend es la fuente de verdad para los permisos mediante Spring Security. La
 Docker Compose carga la configuración desde el archivo `.env` de la raíz, creado a partir de `.env.example`. Reemplaza las credenciales de base de datos y JWT antes de utilizar el sistema con datos reales y nunca subas secretos al repositorio. La ejecución directa con Maven y Vite puede requerir variables de entorno o configuración específica de cada proyecto, como se explica en [Desarrollo local](docs/development.md).
 
 Las variables principales incluyen `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `SPRING_PROFILES_ACTIVE`, `VITE_API_BASE_URL`, `BOOTSTRAP_ADMIN_*` y `OPEN_FOOD_FACTS_*`.
+
+Para una instalación real, genera `JWT_SECRET` con un valor Base64 aleatorio, por ejemplo con `openssl rand -base64 32`. Las variables `BOOTSTRAP_ADMIN_*` crean el usuario `ADMIN` activo inicial solo cuando no existe ningún administrador activo; usa una contraseña temporal fuerte y cámbiala después del primer inicio de sesión.
 
 ### Desarrollo
 
@@ -304,7 +310,7 @@ NovaPOS es una migración y rediseño del [sistema de punto de venta original en
 
 ## Licencia
 
-Este repositorio no tiene una licencia seleccionada. El código fuente se publica para su revisión como proyecto de portafolio y no se autoriza su reutilización o redistribución.
+Este repositorio no incluye una licencia open source. El código fuente se publica únicamente para revisión de portafolio y evaluación técnica. No se autoriza su reutilización, redistribución, modificación ni uso comercial sin permiso explícito de la autora.
 
 ## Autoría
 

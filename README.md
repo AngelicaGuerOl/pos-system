@@ -20,6 +20,10 @@ Current status: functional application under active development. The project cur
 
 ![Supplier settlement](docs/images/readme/05-supplier-settlement.png)
 
+### Inventory Receiving
+
+![Inventory receiving](docs/images/readme/RegistroMercancia.png)
+
 ## Problem It Solves
 
 Small stores often need to register sales, control stock, manage cash sessions, track credit sales, receive payments, and manage supplier merchandise without relying on scattered spreadsheets or manual calculations. NovaPOS centralizes these workflows in a local web application that can run on a store computer with Docker.
@@ -156,6 +160,8 @@ The backend is the source of truth for permissions through Spring Security. Fron
 Docker Compose reads configuration from the root `.env` file, created from `.env.example`. Replace database and JWT credentials before real use, and never commit secrets. Direct Maven and Vite execution may require environment variables or project-specific configuration, as explained in [Local development](docs/development.md).
 
 Key variables include `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION_MINUTES`, `SPRING_PROFILES_ACTIVE`, `VITE_API_BASE_URL`, `BOOTSTRAP_ADMIN_*`, and `OPEN_FOOD_FACTS_*`.
+
+For a real installation, generate `JWT_SECRET` with a random Base64 value such as `openssl rand -base64 32`. The `BOOTSTRAP_ADMIN_*` variables create the initial active `ADMIN` user only when no active administrator exists; use a strong temporary password and change it after the first login.
 
 ### Development
 
@@ -304,7 +310,7 @@ NovaPOS is a migration and redesign of the original [Java Swing Point of Sale Sy
 
 ## License
 
-No license has been selected for this repository. The source code is provided for portfolio review, and reuse or redistribution is not authorized.
+This repository does not include an open-source license. The source code is published for portfolio review and technical evaluation only. Reuse, redistribution, modification, or commercial use is not authorized without explicit permission from the author.
 
 ## Author
 

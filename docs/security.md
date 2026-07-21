@@ -18,7 +18,7 @@ Relevant configuration:
 - `JWT_EXPIRATION_MINUTES`
 - `security.jwt.*` properties
 
-`JWT_SECRET` must be Base64/Base64URL and decode to at least 32 bytes. Passwords are stored with BCrypt.
+`JWT_SECRET` must be Base64/Base64URL and decode to at least 32 bytes. A suitable value can be generated with `openssl rand -base64 32`. Passwords are stored with BCrypt.
 
 Only active users can authenticate. `MustChangePasswordFilter` blocks business endpoints when a user has `mustChangePassword=true`; in that state the user can only fetch the current user and change their password.
 
