@@ -27,8 +27,8 @@ NovaPOS centraliza esos flujos en una aplicación web local que puede ejecutarse
 ## Puntos técnicos destacados
 
 - Migra un flujo POS real desarrollado en Java Swing hacia una arquitectura web con API REST y frontend React.
-- Usa un backend Spring Boot organizado por features con principios de arquitectura limpia, DTOs, servicios, repositorios, MapStruct, Bean Validation, Flyway, servicios transaccionales y manejo global de errores.
-- Usa un frontend React y TypeScript organizado por features, con separación de dominio, aplicación, infraestructura y UI, además de hooks, casos de uso, repositorios, Material UI, AG Grid, React Hook Form, Zod y Axios.
+- Usa un backend Spring Boot con arquitectura en capas organizada por funcionalidades, DTOs, servicios, repositorios, MapStruct, Bean Validation, Flyway, servicios transaccionales y manejo global de errores.
+- Usa un frontend React y TypeScript organizado por funcionalidades, con separación de dominio, aplicación, infraestructura y UI, además de hooks, casos de uso, repositorios, Material UI, AG Grid, React Hook Form, Zod y Axios.
 - Aplica autenticación JWT, autorización `ADMIN`/`CASHIER`, cambio obligatorio de contraseña y permisos controlados por el backend.
 - Modela ventas, devoluciones, cancelaciones, movimientos de inventario, sesiones de caja, cuentas por cobrar, entradas de proveedor y cortes de proveedor.
 - Soporta búsqueda por código de barras con productos locales y consulta opcional a Open Food Facts para códigos numéricos no registrados.
@@ -52,14 +52,15 @@ La integración con Open Food Facts tiene alcance limitado de forma intencional:
 
 | Área | Tecnologías |
 | --- | --- |
-| Backend | Java 17, Spring Boot 4.1.0, Spring Web MVC, Spring Data JPA, Spring Security, JJWT, PostgreSQL, Flyway, MapStruct, Bean Validation, Springdoc OpenAPI, JUnit, Spring Boot Test, Mockito |
+| Backend | Java 17, Spring Boot 4.1.0, Spring Web MVC, Spring Data JPA, Spring Security, JJWT, Flyway, MapStruct, Bean Validation, Springdoc OpenAPI, JUnit, Spring Boot Test, Mockito |
 | Frontend | React 19, TypeScript, Vite, Material UI, AG Grid, React Hook Form, Zod, Axios, Oxlint |
-| Infraestructura | Docker, Docker Compose, PostgreSQL 16, Nginx Alpine, scripts operativos PowerShell |
+| Base de datos | PostgreSQL 16 |
+| Infraestructura | Docker, Docker Compose, Nginx Alpine, scripts operativos de PowerShell |
 | Procesamiento de archivos | Apache POI para importación histórica y exportación a Excel de cortes de proveedor |
 
 ## Arquitectura
 
-NovaPOS es un monorepo con backend Spring Boot, frontend React, configuración Docker, scripts operativos y documentación. El backend está organizado por feature con capas de controlador, servicio, repositorio, entidad, DTO, mapper y excepciones. El frontend sigue una estructura limpia por features que separa dominio, aplicación, infraestructura y UI.
+NovaPOS es un monorepo con backend Spring Boot, frontend React, configuración Docker, scripts operativos y documentación. El backend está organizado por funcionalidades con capas de controlador, servicio, repositorio, entidad, DTO, mapper y excepciones. El frontend utiliza una arquitectura por funcionalidades inspirada en principios de Clean Architecture, con separación entre dominio, aplicación, infraestructura e interfaz de usuario.
 
 Las reglas y cálculos de negocio viven en el backend; el frontend consume los resultados mediante este flujo:
 
